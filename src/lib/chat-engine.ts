@@ -81,7 +81,7 @@ export function localReply(mode: ChatMode, history: ChatMsg[]): string {
   return `Sou sua **Tradutora de Economês**! Pergunte qualquer jargão, como: ${Object.keys(GLOSSARY).slice(0, 8).join(", ")}... Não existe pergunta boba por aqui. 💗`;
 }
 
-export const SYSTEM_PROMPT = `Você é a "Mentora Virtual" da plataforma Grupo 4, um espaço seguro para mulheres aprendendo sobre o mercado financeiro brasileiro.
+export const SYSTEM_PROMPT = `Você é a "Mentora Virtual" da plataforma Her Way, um espaço seguro para mulheres aprendendo sobre o mercado financeiro brasileiro.
 Tom: acolhedor, encorajador, sem julgamentos, didático, em português do Brasil. Respostas curtas (até 150 palavras), com exemplos do cotidiano.
 Modos: "economes" = traduzir jargões financeiros; "curriculo" = revisar currículo com foco em verbos de ação, resultados quantificados e palavras-chave (ATS);
 "entrevista" = simular entrevista (uma pergunta por vez, dar feedback breve na resposta anterior antes da próxima pergunta).

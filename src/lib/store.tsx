@@ -2,7 +2,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { DEMO_PROFILE, DEMO_PROGRESS, JOBS, MODULES } from "./mock-data";
 import {
-  computeJourney, effectiveSkills, isPassed, levelFromXp, modulesForTrack, PASS_SCORE, quizXp, type JourneyState,
+  computeJourney, effectiveSkills, isFinanceJob, isPassed, levelFromXp, modulesForTrack, PASS_SCORE, quizXp, type JourneyState,
 } from "./engine";
 import * as repo from "./repo";
 import { isDemoMode } from "./supabase";
@@ -17,6 +17,7 @@ interface PersistedState {
   mentorRequests: string[];
   appliedJobs: string[];
   customJobs: Job[];
+  eventRegistrations: string[];
   view: ViewMode;
 }
 
@@ -36,6 +37,9 @@ interface Store extends PersistedState {
   submitQuiz: (moduleId: string, score: number) => { passed: boolean; xp: number };
   requestMentor: (mentorId: string, affinity: number) => void;
   connectLinkedin: (url: string) => void;
+  registerEvent: (eventId: string) => void;
+  profileBoostOpen: boolean;
+  setProfileBoostOpen: (open: boolean) => void;
   applyJob: (jobId: string, pct: number) => void;
   addJob: (job: Job) => void;
   mergeJobs: (jobs: Job[]) => void;
@@ -43,7 +47,7 @@ interface Store extends PersistedState {
   resetDemo: () => void;
 }
 
-const KEY = "grupo4-state-v1";
+const KEY = "herway-state-v1";
 const initial: PersistedState = {
   profile: DEMO_PROFILE,
   progress: DEMO_PROGRESS,
@@ -51,6 +55,7 @@ const initial: PersistedState = {
   mentorRequests: [],
   appliedJobs: [],
   customJobs: [],
+  eventRegistrations: [],
   view: "aluna",
 };
 
@@ -61,6 +66,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const [celebration, setCelebration] = useState<Celebration | null>(null);
   const [remoteJobs, setRemoteJobs] = useState<Job[] | null>(null);
+  const [profileBoostOpen, setProfileBoostOpen] = useState(false);
 
   // Hidratação do localStorage (evita mismatch SSR)
   useEffect(() => {
@@ -82,7 +88,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const jobs = useMemo(() => {
     const base = remoteJobs ?? JOBS;
     const ids = new Set(base.map((j) => j.id));
-    return [...state.customJobs.filter((j) => !ids.has(j.id)), ...base];
+    return [...state.customJobs.filter((j) => !ids.has(j.id)), ...base].filter(isFinanceJob);
   }, [remoteJobs, state.customJobs]);
 
   const gainXp = useCallback((profile: Profile, xp: number) => {
@@ -137,6 +143,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const profile = { ...(g ? g.profile : state.profile), linkedin_url: url };
     setState((s) => ({ ...s, profile }));
     repo.saveProfile(profile);
+    setProfileBoostOpen(false);
     if (g) {
       setCelebration({
         title: g.levelUp ? `Nível ${g.levelUp} desbloqueado!` : "Perfil profissional conectado!",
@@ -166,6 +173,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     submitQuiz,
     requestMentor,
     connectLinkedin,
+    registerEvent: (eventId) =>
+      setState((s) => (s.eventRegistrations.includes(eventId) ? s : { ...s, eventRegistrations: [...s.eventRegistrations, eventId] })),
+    profileBoostOpen,
+    setProfileBoostOpen,
     applyJob: (jobId, pct) => {
       setState((s) => (s.appliedJobs.includes(jobId) ? s : { ...s, appliedJobs: [...s.appliedJobs, jobId] }));
       repo.saveApplication(jobId, pct);

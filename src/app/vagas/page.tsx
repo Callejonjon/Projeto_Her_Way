@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Building2, Check, Filter, GraduationCap, MapPin, Plus, RefreshCw, Search, Send, Sparkles, X } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { AREAS, SKILL_TAGS } from "@/lib/mock-data";
+import { JOB_AREAS, SKILL_TAGS } from "@/lib/mock-data";
 import { jobCompatibility, moduleForSkill } from "@/lib/engine";
 import { timeAgo } from "@/lib/format";
 import { MatchBadge, PageHeader } from "@/components/ui";
@@ -89,7 +89,7 @@ export default function Vagas() {
             ))}
           </FilterGroup>
           <FilterGroup title="Área">
-            {AREAS.map((a) => <Check2 key={a} label={a} checked={areas.includes(a)} onChange={() => toggle(areas, a, setAreas)} />)}
+            {JOB_AREAS.map((a) => <Check2 key={a} label={a} checked={areas.includes(a)} onChange={() => toggle(areas, a, setAreas)} />)}
           </FilterGroup>
           <FilterGroup title="Modalidade">
             {MODALITIES.map((m) => <Check2 key={m} label={m} checked={mods.includes(m)} onChange={() => toggle(mods, m, setMods)} />)}
@@ -175,7 +175,7 @@ function Check2({ label, checked, onChange }: { label: string; checked: boolean;
 function JobForm({ onClose }: { onClose: () => void }) {
   const { addJob, mergeJobs } = useStore();
   const [tab, setTab] = useState<"manual" | "import">("manual");
-  const [f, setF] = useState({ title: "", company: "", area: AREAS[0] as Area, modality: "Híbrido" as Modality, level_required: "Estágio" as JobLevel,
+  const [f, setF] = useState({ title: "", company: "", area: JOB_AREAS[0] as Area, modality: "Híbrido" as Modality, level_required: "Estágio" as JobLevel,
     location: "", description: "", source_url: "", skills_tags: [] as string[], is_exclusive: true });
   const [raw, setRaw] = useState("");
   const [err, setErr] = useState<string | null>(null);
@@ -202,7 +202,7 @@ function JobForm({ onClose }: { onClose: () => void }) {
         });
       }
       const jobs: Job[] = rows.filter((r) => r.title && r.company).map((r, i) => ({
-        id: `imp-${Date.now()}-${i}`, title: r.title!, company: r.company!, area: (r.area as Area) ?? "Tech & Dados",
+        id: `imp-${Date.now()}-${i}`, title: r.title!, company: r.company!, area: (r.area as Area) ?? "Asset Management",
         modality: (r.modality as Modality) ?? "Híbrido", level_required: (r.level_required as JobLevel) ?? "Júnior",
         skills_tags: r.skills_tags ?? [], description: r.description ?? "", location: r.location ?? "", source: "manual",
         source_url: r.source_url || `#imp-${i}`, is_exclusive: true, created_at: new Date().toISOString(),
@@ -235,7 +235,7 @@ function JobForm({ onClose }: { onClose: () => void }) {
             <div className="sm:col-span-2"><label className="label" htmlFor="jt">Título da vaga</label><input id="jt" className="input" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
             <div><label className="label" htmlFor="jc">Empresa</label><input id="jc" className="input" value={f.company} onChange={(e) => setF({ ...f, company: e.target.value })} /></div>
             <div><label className="label" htmlFor="jl">Localização</label><input id="jl" className="input" value={f.location} onChange={(e) => setF({ ...f, location: e.target.value })} /></div>
-            <div><label className="label" htmlFor="ja">Área</label><select id="ja" className="input" value={f.area} onChange={(e) => setF({ ...f, area: e.target.value as Area })}>{AREAS.map((a) => <option key={a}>{a}</option>)}</select></div>
+            <div><label className="label" htmlFor="ja">Área</label><select id="ja" className="input" value={f.area} onChange={(e) => setF({ ...f, area: e.target.value as Area })}>{JOB_AREAS.map((a) => <option key={a}>{a}</option>)}</select></div>
             <div><label className="label" htmlFor="jm">Modalidade</label><select id="jm" className="input" value={f.modality} onChange={(e) => setF({ ...f, modality: e.target.value as Modality })}>{MODALITIES.map((m) => <option key={m}>{m}</option>)}</select></div>
             <div><label className="label" htmlFor="jn">Nível</label><select id="jn" className="input" value={f.level_required} onChange={(e) => setF({ ...f, level_required: e.target.value as JobLevel })}>{["Estágio", "Júnior", "Pleno", "Transição"].map((l) => <option key={l}>{l}</option>)}</select></div>
             <div><label className="label" htmlFor="ju">Link da vaga</label><input id="ju" type="url" className="input" value={f.source_url} onChange={(e) => setF({ ...f, source_url: e.target.value })} /></div>
