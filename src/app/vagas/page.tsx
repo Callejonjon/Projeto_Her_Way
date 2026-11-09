@@ -60,7 +60,6 @@ export default function Vagas() {
   return (
     <>
       <PageHeader eyebrow="Mural de Vagas" title={view === "admin" ? "Curadoria de vagas" : "Oportunidades para você"}
-        subtitle="Vagas de feeds abertos (RSS/APIs) + vagas exclusivas de parceiras. A % de compatibilidade considera os módulos que você concluiu."
         action={
           <div className="flex flex-wrap gap-2">
             <button className="btn-secondary" onClick={runSync} disabled={sync.loading}><RefreshCw size={16} className={sync.loading ? "animate-spin" : ""} /> Sincronizar feeds</button>
