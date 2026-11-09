@@ -1,5 +1,4 @@
 "use client";
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Check, ChevronDown, ChevronRight, Star, Trophy } from "lucide-react";
@@ -110,21 +109,8 @@ export default function JourneyHero() {
 
   return (
     <section className="relative overflow-hidden rounded-3xl border border-slate-200/70 bg-[linear-gradient(90deg,#FFFFFF_0%,#FFFFFF_38%,#FCEFF6_58%,#F3E3F1_80%,#E9DDF3_100%)] shadow-soft">
-      {/* Imagem aspiracional + frase (telas largas) */}
-      <div aria-hidden className="pointer-events-none absolute inset-y-0 left-[470px] hidden wide:block">
-        <Image src="/images/hero-mulher.jpg" alt="" width={620} height={536} priority
-          className="h-full w-auto object-cover [mask-image:linear-gradient(90deg,transparent_0%,#000_22%,#000_82%,transparent_100%)]" />
-      </div>
-      <figure aria-hidden className="pointer-events-none absolute left-[800px] top-1/2 hidden w-[170px] -translate-y-1/2 -rotate-[9deg] ultra:block">
-        <blockquote className="font-script text-[21px] leading-[1.15] text-navy-800/85">
-          “Mais mulheres no mercado financeiro transformam o mercado e a sociedade.”
-        </blockquote>
-        <svg viewBox="0 0 120 12" className="ml-6 mt-1 w-24 text-pink-500"><path d="M2 9C30 3 70 2 118 6" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" /></svg>
-      </figure>
-
-      <div className="relative grid gap-6 p-6 sm:p-8 xl:grid-cols-[minmax(0,1fr)_330px] xl:items-center xl:py-7 xl:pr-6">
+      <div className="relative grid gap-6 p-6 sm:p-8 xl:grid-cols-[minmax(0,1.3fr)_minmax(180px,0.7fr)_330px] xl:items-center xl:py-7 xl:pr-6">
         <div className="max-w-[520px]">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Sua jornada</p>
           <TrackPicker />
           <p className="mt-3 text-lg font-semibold text-navy-950 sm:text-xl">
             Você está na <span className="text-pink-500">Etapa {journey.currentStage}: {stage.title}</span>
@@ -134,6 +120,12 @@ export default function JourneyHero() {
             Continuar minha jornada <ArrowRight size={18} />
           </Link>
         </div>
+        <figure className="flex max-w-[300px] flex-col justify-center border-l-2 border-pink-300/70 pl-5 xl:mx-auto">
+          <blockquote className="text-lg font-semibold italic leading-relaxed text-navy-800 sm:text-xl">
+            “Mais mulheres no mercado financeiro transformam o mercado e a sociedade.”
+          </blockquote>
+          <span aria-hidden className="mt-4 h-1 w-16 rounded-full bg-pink-500" />
+        </figure>
         <XPCard />
       </div>
     </section>
