@@ -52,6 +52,21 @@ export default function Vagas() {
       .sort((a, b) => b.m.pct - a.m.pct);
   }, [jobs, q, trilha, areas, mods, tags, skills, profile.track_type]);
 
+  // Curadoria editorial: vagas reais da Galapagos Capital, sem alegar parceria.
+  // O banco de talentos é um cadastro genérico, não uma oportunidade específica.
+  const featuredJobs = useMemo(() => jobs
+    .filter((job) => job.source === "galapagos-gupy"
+      && /galapagos capital/i.test(job.company)
+      && !/base de talentos|banco de talentos/i.test(job.title)
+      && /^https:\/\/galapagoscapital\.gupy\.io\/jobs\/\d+/.test(job.source_url ?? ""))
+    .map((job) => ({ job, match: jobCompatibility(job, skills, profile.track_type) }))
+    .sort((a, b) => {
+      const aEntry = a.job.level_required === "Estágio" ? 1 : 0;
+      const bEntry = b.job.level_required === "Estágio" ? 1 : 0;
+      return bEntry - aEntry || b.match.pct - a.match.pct;
+    })
+    .slice(0, 4), [jobs, skills, profile.track_type]);
+
   async function runSync() {
     if (!isAdmin || !supabase) return;
     setSync({ loading: true });
@@ -84,6 +99,36 @@ export default function Vagas() {
           </div>
         ) : undefined} />
       {sync.msg && <p className="mb-4 rounded-xl bg-slate-100 px-3 py-2 text-xs text-slate-600" aria-live="polite">{sync.msg}</p>}
+
+      {featuredJobs.length > 0 && (
+        <section className="mb-6 rounded-3xl border border-pink-100 bg-gradient-to-br from-pink-50 via-white to-slate-50 p-5 sm:p-6" aria-labelledby="featured-jobs-title">
+          <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="mb-1 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-pink-600"><Sparkles size={15}/> Seleção da Her Way</p>
+              <h2 id="featured-jobs-title" className="text-xl font-extrabold text-navy-950 sm:text-2xl">Vagas destaque</h2>
+              <p className="mt-1 text-sm text-slate-600">Oportunidades da Galapagos Capital selecionadas para a comunidade.</p>
+            </div>
+            <span className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-navy-800 shadow-sm">Fonte: Gupy · sem parceria comercial</span>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {featuredJobs.map(({job,match}) => (
+              <article key={job.id} className="flex flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-pink-100 px-2.5 py-1 text-xs font-semibold text-pink-700"><Building2 size={13}/> Galapagos Capital</span>
+                  <span className="text-xs font-semibold text-navy-800">{match.pct}% match</span>
+                </div>
+                <h3 className="line-clamp-3 font-bold leading-snug text-navy-950">{job.title}</h3>
+                <p className="mt-3 flex items-start gap-1.5 text-xs text-slate-600"><MapPin size={14} className="shrink-0"/>{job.location} · {job.level_required}</p>
+                <p className="mt-2 line-clamp-2 flex-1 text-xs leading-5 text-slate-600">{job.description}</p>
+                <a href={job.source_url} target="_blank" rel="noopener noreferrer" className="btn-primary mt-4 justify-center text-sm">
+                  Ver vaga <ExternalLink size={15}/>
+                </a>
+              </article>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-slate-500">Disponibilidade e requisitos devem ser confirmados no anúncio da empresa. Candidaturas são feitas na página oficial.</p>
+        </section>
+      )}
 
       {/* Busca */}
       <div className="card mb-4 flex items-center gap-2 p-2">
