@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { createServiceClient } from "@/lib/supabase";
 import { isFinanceJob } from "@/lib/engine";
 import type { Area, Job, JobLevel } from "@/lib/types";
@@ -102,22 +103,30 @@ async function fromApis(): Promise<Job[]> {
 }
 
 
+
 async function handler(req: Request) {
-  const db=createServiceClient();
-  if(!db)return NextResponse.json({error:"Configure SUPABASE_SERVICE_ROLE_KEY no servidor."},{status:503});
   const authorization=req.headers.get("authorization")??"";
   const secret=process.env.CRON_SECRET;
   const byCron=req.method==="GET" && !!secret && authorization==="Bearer "+secret;
-  let byAdmin=false;
-  if(req.method==="POST" && authorization.startsWith("Bearer ")){
+  let db:SupabaseClient|null=null;
+  if(byCron) {
+    db=createServiceClient();
+    if(!db)return NextResponse.json({error:"Sincronização agendada indisponível: configure SUPABASE_SERVICE_ROLE_KEY."},{status:503});
+  }else if(req.method==="POST" && authorization.startsWith("Bearer ")){
+    // Admin sync uses the user's own JWT and Supabase RLS: no privileged key needed.
+    const url=process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const publicKey=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if(!url||!publicKey)return NextResponse.json({error:"Supabase não configurado."},{status:503});
     const token=authorization.slice(7);
-    const {data:{user},error}=await db.auth.getUser(token);
-    if(user&&!error){
-      const result=await db.from("profiles").select("is_admin").eq("id",user.id).maybeSingle();
-      byAdmin=result.data?.is_admin===true;
-    }
-  }
-  if(!byCron&&!byAdmin)return NextResponse.json({error:"Acesso restrito à administração."},{status:403});
+    const client=createClient(url,publicKey,{global:{headers:{Authorization:"Bearer "+token}},auth:{persistSession:false}});
+    const {data:{user},error}=await client.auth.getUser(token);
+    if(!user||error)return NextResponse.json({error:"Sessão inválida."},{status:401});
+    const profile=await client.from("profiles").select("is_admin").eq("id",user.id).maybeSingle();
+    if(profile.error||profile.data?.is_admin!==true)
+      return NextResponse.json({error:"Acesso restrito à administração."},{status:403});
+    db=client;
+  }else return NextResponse.json({error:"Acesso restrito à administração."},{status:403});
+
   const all=await fromApis();
   const unique=[...new Map(all.filter(j=>
     j.source_url && RELEVANT.test(j.title+" "+j.description) && isFinanceJob(j)
