@@ -25,6 +25,7 @@ const STUDENT_NAV = [
 ];
 const ADMIN_NAV = [
   { href: "/admin", label: "Painel de Impacto", icon: BarChart3 },
+  { href: "/admin/conteudos", label: "Gerenciar conteúdos", icon: BookOpen },
   { href: "/vagas", label: "Curadoria de Vagas", icon: Briefcase },
   { href: "/mentoria", label: "Mentoras e Eventos", icon: Users },
 ];
