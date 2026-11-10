@@ -8,6 +8,9 @@ import {
 import { useStore } from "@/lib/store";
 import { LEVEL_NAMES, levelProgress } from "@/lib/engine";
 import Brand from "./Brand";
+import AuthGate from "./AuthGate";
+import { supabase } from "@/lib/supabase";
+import { LogOut } from "lucide-react";
 import Chatbot from "./Chatbot";
 import CelebrationOverlay from "./CelebrationOverlay";
 import ProfileBoostDialog from "./ProfileBoostDialog";
@@ -70,8 +73,9 @@ function LevelCard({ onNavigate }: { onNavigate?: () => void }) {
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { view, setView, profile, isDemo } = useStore();
-  const nav = view === "admin" ? ADMIN_NAV : STUDENT_NAV;
+  const { view, setView, profile, isDemo, isAdmin } = useStore();
+  const navMode = isAdmin ? view : "aluna";
+  const nav = navMode === "admin" ? ADMIN_NAV : STUDENT_NAV;
 
   return (
     <div className="flex h-full flex-col px-4 py-5">
@@ -91,7 +95,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       <div className="mt-auto space-y-3 pt-6">
-        {view === "aluna" ? (
+        {navMode === "aluna" ? (
           profile.linkedin_url ? <LevelCard onNavigate={onNavigate} /> : <ProfileBoostCard />
         ) : (
           <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-xs text-white/80">
@@ -102,6 +106,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             </button>
           </div>
         )}
+        {!isDemo && <button className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-white/80 hover:bg-white/10" onClick={async () => { await supabase?.auth.signOut(); router.replace("/login"); }}><LogOut size={16} /> Sair da conta</button>}
         {isDemo && (
           <p className="flex items-center gap-1.5 px-1 text-[11px] text-white/45"><Sparkles size={12} /> Modo demonstração (mock data)</p>
         )}
@@ -115,11 +120,14 @@ const SIDEBAR_BG = "bg-[radial-gradient(120%_60%_at_0%_100%,rgba(236,72,153,0.22
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  const { view } = useStore();
+  const { view, isAdmin } = useStore();
+  const publicPage = ["/login", "/cadastro", "/recuperar-senha", "/auth/callback", "/auth/reset"].includes(pathname);
   useEffect(() => setOpen(false), [pathname]);
 
+  if (publicPage) return <AuthGate>{children}</AuthGate>;
+
   return (
-    <div className="min-h-screen lg:pl-[264px]">
+    <AuthGate><div className="min-h-screen lg:pl-[264px]">
       <a href="#conteudo" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:px-4 focus:py-2">
         Pular para o conteúdo
       </a>
@@ -146,9 +154,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       <main id="conteudo" className="mx-auto max-w-[1640px] px-4 py-5 sm:px-6 lg:px-7 lg:py-5">{children}</main>
 
-      {view === "aluna" && <Chatbot />}
+      {(view === "aluna" || !isAdmin) && <Chatbot />}
       <ProfileBoostDialog />
       <CelebrationOverlay />
-    </div>
+    </div></AuthGate>
   );
 }
