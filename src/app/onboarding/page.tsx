@@ -40,7 +40,7 @@ export default function Onboarding() {
   }
 
   return <div className="mx-auto max-w-4xl space-y-7">
-    <div><h1 className="text-3xl font-extrabold">Escolha sua jornada</h1><p className="mt-2 text-slate-600">Você poderá trocar de jornada depois, sem perder suas conquistas.</p></div>
+    <div><h1 className="text-3xl font-extrabold">Escolha sua jornada</h1><p className="mt-2 text-slate-600">Sua jornada é definida nesta etapa. Para escolher novamente, use “Refazer diagnóstico” em Meu Perfil.</p></div>
     <div className="grid gap-4 sm:grid-cols-2">
       <button type="button" onClick={() => setTrack("A")} aria-pressed={track === "A"} className={`card p-6 text-left transition hover:shadow-md ${track === "A" ? "ring-2 ring-pink-500" : ""}`}>
         <GraduationCap size={30} className="text-pink-500" /><h2 className="mt-4 text-xl font-bold">Primeiros Passos</h2><p className="mt-2 text-sm text-slate-600">Para estudantes, recém-formadas e mulheres iniciando uma carreira no mercado financeiro.</p>
