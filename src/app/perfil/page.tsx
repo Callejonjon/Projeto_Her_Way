@@ -10,6 +10,7 @@ import { LEVEL_NAMES, levelProgress } from "@/lib/engine";
 import * as repo from "@/lib/repo";
 import { isDemoMode } from "@/lib/supabase";
 import { PageHeader, ProgressBar, TrackBadge } from "@/components/ui";
+import AvatarEditor from "@/components/avatar/AvatarEditor";
 import type { Area } from "@/lib/types";
 
 export default function Perfil() {
@@ -169,6 +170,8 @@ export default function Perfil() {
           </section>
         </div>
       </div>
+
+      <div className="mt-6"><AvatarEditor/></div>
     </>
   );
 }
