@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { unpackCourseZip } from "@/lib/unzip-client";
 
 type CourseRow = {id:string;title:string;source_filename:string|null;quiz_filename:string|null;published:boolean};
 type Match = {file:File; module:CourseRow; kind:"pdf"|"pptx"|"quiz_pdf"};
@@ -31,6 +32,7 @@ function matchFiles(files:File[],courses:CourseRow[]){
 export default function LearningMediaManager(){
   const [courses,setCourses]=useState<CourseRow[]>([]);
   const [files,setFiles]=useState<File[]>([]);
+  const [readingZip,setReadingZip]=useState(false);
   const [status,setStatus]=useState("");
   const [busy,setBusy]=useState(false);
   const [moduleId,setModuleId]=useState("");
@@ -48,6 +50,19 @@ export default function LearningMediaManager(){
         else {setCourses(data??[]);if(data?.length)setModuleId(data[0].id);}
       });
   },[]);
+  async function selectZip(file?: File) {
+    if (!file) return;
+    setReadingZip(true);
+    setStatus("Lendo o pacote ZIP...");
+    try {
+      const unpacked = await unpackCourseZip(file);
+      setFiles(unpacked);
+      setStatus(`Pacote aberto: ${unpacked.length} PDFs/PowerPoints encontrados. Confira a correspondência antes de importar.`);
+    } catch (e) {
+      setFiles([]);
+      setStatus(e instanceof Error ? e.message : "Não foi possível abrir o ZIP.");
+    } finally { setReadingZip(false); }
+  }
   async function importAssets(){
     if(!supabase||!mapped.length)return;
     setBusy(true);
@@ -99,12 +114,19 @@ export default function LearningMediaManager(){
   return <section className="card mt-6 space-y-6 p-6">
     <div><h2 className="text-lg font-bold">Materiais originais e vídeos-avatar</h2><p className="mt-1 text-sm text-slate-600">Envie os PDFs convertidos, os PowerPoints originais e os quizzes PDF. Os arquivos serão vinculados ao curso pelo nome original.</p></div>
     <div className="space-y-3 rounded-xl bg-slate-50 p-4">
-      <label htmlFor="media-files" className="label">Selecionar vários arquivos PDF ou PPTX</label>
+      <label htmlFor="media-zip" className="label">Opção recomendada: enviar o ZIP inteiro, sem extrair as pastas</label>
+      <input id="media-zip" type="file" accept=".zip,application/zip,application/x-zip-compressed" className="input"
+        disabled={readingZip || busy} onChange={e=>void selectZip(e.target.files?.[0])} />
+      {readingZip && <p className="text-sm text-slate-600">Abrindo o ZIP...</p>}
+      <p className="text-xs text-slate-500">Se você tiver o arquivo herway_materiais_para_upload.zip, selecione-o aqui. A Her Way extrairá os documentos e fará a associação com os cursos.</p>
+      <div className="border-t border-slate-200 pt-3">
+      <label htmlFor="media-files" className="label">Alternativa: selecionar vários PDF ou PPTX</label>
       <input id="media-files" type="file" accept=".pdf,.pptx,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation" multiple
         onChange={e=>setFiles(Array.from(e.target.files??[]))} className="input" />
+      </div>
       {files.length>0&&<p className="text-sm text-slate-700">{mapped.length} arquivos reconhecidos de {files.length} selecionados.</p>}
       {unmatched.length>0&&<details className="text-sm text-amber-700"><summary>{unmatched.length} arquivos sem associação automática (não serão enviados)</summary><ul className="mt-2 list-disc pl-5">{unmatched.map(f=><li key={f}>{f}</li>)}</ul></details>}
-      <button className="btn-primary" onClick={()=>void importAssets()} disabled={busy||!mapped.length}>{busy?"Enviando arquivos...":"Enviar materiais ao Supabase"}</button>
+      <button className="btn-primary" onClick={()=>void importAssets()} disabled={busy||readingZip||!mapped.length}>{busy?"Enviando arquivos...":"Enviar materiais ao Supabase"}</button>
     </div>
     <div className="space-y-3">
       <h3 className="font-bold">Adicionar aula com avatar (vídeo pronto)</h3>
