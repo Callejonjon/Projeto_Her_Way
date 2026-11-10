@@ -6,6 +6,7 @@ import { fromBrazilianJobApis, enabledBrazilianJobSources } from "@/lib/jobs/pro
 import type { Area, Job, JobLevel } from "@/lib/types";
 
 export const runtime = "nodejs";
+export const maxDuration = 60; // Providers run server-side; allow bounded retries and timeouts.
 export const dynamic = "force-dynamic";
 
 /* =============================================================================
