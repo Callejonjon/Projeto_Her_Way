@@ -60,7 +60,7 @@ export async function unpackCourseZip(archive: File): Promise<File[]> {
         throw new Error("Seu navegador não permite abrir ZIP. Tente usar o Chrome atualizado.");
       }
       try {
-        const stream = new Blob([zippedBytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+        const stream = new Blob([zippedBytes]).stream().pipeThrough(new DecompressionStream("deflate-raw" as CompressionFormat));
         output = new Uint8Array(await new Response(stream).arrayBuffer());
       } catch {
         throw new Error("Não foi possível extrair o ZIP neste navegador. Tente abrir pelo Chrome atualizado.");
