@@ -1,8 +1,10 @@
 "use client";
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Building2, Check, Filter, GraduationCap, MapPin, Plus, RefreshCw, Search, Send, Sparkles, X } from "lucide-react";
+import { Building2, Check, ExternalLink, Filter, GraduationCap, MapPin, Plus, RefreshCw, Search, Sparkles, X } from "lucide-react";
 import { useStore } from "@/lib/store";
+import { supabase } from "@/lib/supabase";
+import * as repo from "@/lib/repo";
 import { JOB_AREAS, SKILL_TAGS } from "@/lib/mock-data";
 import { jobCompatibility, moduleForSkill } from "@/lib/engine";
 import { timeAgo } from "@/lib/format";
@@ -14,12 +16,15 @@ const MODALITIES: Modality[] = ["Remoto", "Híbrido", "Presencial"];
 
 function sourceLabel(s: string) {
   if (s === "manual") return { label: "Curadoria", cls: "bg-pink-100 text-pink-600" };
+  if (s === "himalayas") return { label: "Himalayas", cls: "bg-pink-50 text-navy-800" };
+  if (s === "jobicy") return { label: "Jobicy", cls: "bg-slate-100 text-slate-600" };
+  if (s === "remotive") return { label: "Remotive", cls: "bg-slate-100 text-slate-600" };
   if (s.startsWith("rss")) return { label: "RSS", cls: "bg-slate-100 text-slate-600" };
   return { label: "API aberta", cls: "bg-slate-100 text-slate-600" };
 }
 
 export default function Vagas() {
-  const { jobs, skills, profile, appliedJobs, applyJob, view, mergeJobs, modules } = useStore();
+  const { jobs, skills, profile, view, isAdmin, mergeJobs, modules } = useStore();
   const [q, setQ] = useState("");
   const [trilha, setTrilha] = useState<keyof typeof TRILHAS>("Todas");
   const [areas, setAreas] = useState<Area[]>([]);
@@ -44,14 +49,22 @@ export default function Vagas() {
   }, [jobs, q, trilha, areas, mods, tags, skills, profile.track_type]);
 
   async function runSync() {
+    if (!isAdmin || !supabase) return;
     setSync({ loading: true });
     try {
-      const res = await fetch("/api/jobs/sync", { method: "POST" });
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Entre novamente com sua conta administradora.");
+      const res = await fetch("/api/jobs/sync", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
       const data = await res.json();
-      if (data.jobs?.length) mergeJobs(data.jobs);
-      setSync({ loading: false, msg: `${data.fetched ?? 0} vagas lidas de ${data.sources?.join(", ") || "feeds"} · ${data.saved ? `${data.saved} salvas no Supabase` : "modo demo (não persistido no banco)"}` });
-    } catch {
-      setSync({ loading: false, msg: "Não foi possível sincronizar agora." });
+      if (!res.ok) throw new Error(data.error || "Não foi possível sincronizar as APIs.");
+      const stored = await repo.fetchJobs();
+      if (stored?.length) mergeJobs(stored);
+      setSync({loading:false,msg:`${data.fetched ?? 0} vagas relevantes encontradas · ${data.saved ?? 0} novas/atualizadas no Supabase · fontes: ${data.sources?.join(", ") || "nenhuma"}`});
+    } catch (e) {
+      setSync({ loading: false, msg: e instanceof Error ? e.message : "Não foi possível sincronizar agora." });
     }
   }
 
@@ -60,12 +73,12 @@ export default function Vagas() {
   return (
     <>
       <PageHeader eyebrow="Mural de Vagas" title={view === "admin" ? "Curadoria de vagas" : "Oportunidades para você"}
-        action={
+        action={isAdmin ? (
           <div className="flex flex-wrap gap-2">
             <button className="btn-secondary" onClick={runSync} disabled={sync.loading}><RefreshCw size={16} className={sync.loading ? "animate-spin" : ""} /> Sincronizar feeds</button>
             <button className="btn-primary" onClick={() => setShowForm(true)}><Plus size={16} /> Cadastrar vaga manual / importar</button>
           </div>
-        } />
+        ) : undefined} />
       {sync.msg && <p className="mb-4 rounded-xl bg-slate-100 px-3 py-2 text-xs text-slate-600" aria-live="polite">{sync.msg}</p>}
 
       {/* Busca */}
@@ -111,7 +124,6 @@ export default function Vagas() {
           <p className="mb-3 text-sm text-slate-500">{results.length} vaga(s) · ordenadas por compatibilidade</p>
           <div className="grid gap-4 xl:grid-cols-2">
             {results.map(({ job, m }) => {
-              const applied = appliedJobs.includes(job.id);
               const src = sourceLabel(job.source);
               const learn = m.missing.map((s) => ({ s, mod: moduleForSkill(modules, s) })).find((x) => x.mod);
               return (
@@ -146,9 +158,9 @@ export default function Vagas() {
                   )}
                   <div className="mt-4 flex items-center justify-between gap-2">
                     <span className="text-xs text-slate-400">{timeAgo(job.created_at)} · {job.area}</span>
-                    <button className={applied ? "btn-secondary" : "btn-primary"} disabled={applied} onClick={() => applyJob(job.id, m.pct)}>
-                      {applied ? <><Check size={16} /> Candidatura enviada</> : <><Send size={16} /> Candidatar-se</>}
-                    </button>
+                    {/^https:\/\//.test(job.source_url || "") ? <a href={job.source_url} target="_blank" rel="noopener noreferrer" className="btn-primary">
+                      <ExternalLink size={16}/> Ver vaga e candidatar-se
+                    </a> : <span className="text-xs text-slate-500">Link de candidatura indisponível</span>}
                   </div>
                 </article>
               );
@@ -158,7 +170,7 @@ export default function Vagas() {
         </section>
       </div>
 
-      {showForm && <JobForm onClose={() => setShowForm(false)} />}
+      {isAdmin && showForm && <JobForm onClose={() => setShowForm(false)} />}
     </>
   );
 }
