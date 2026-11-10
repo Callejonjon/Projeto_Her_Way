@@ -7,7 +7,7 @@ import {
 import * as repo from "./repo";
 import { isDemoMode, supabase } from "./supabase";
 import type { User } from "@supabase/supabase-js";
-import type { Job, Module, ModuleProgress, Profile } from "./types";
+import type { EventItem, Job, Mentor, Module, ModuleProgress, Profile } from "./types";
 
 export type ViewMode = "aluna" | "admin";
 
@@ -33,6 +33,8 @@ interface Store extends PersistedState {
   isAdmin: boolean;
   modules: Module[];
   jobs: Job[];
+  mentors: Mentor[];
+  events: EventItem[];
   journey: JourneyState;
   skills: Set<string>;
   celebration: Celebration | null;
@@ -77,6 +79,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const [celebration, setCelebration] = useState<Celebration | null>(null);
   const [remoteJobs, setRemoteJobs] = useState<Job[] | null>(null);
+  const [remoteMentors, setRemoteMentors] = useState<Mentor[]>([]);
+  const [remoteEvents, setRemoteEvents] = useState<EventItem[]>([]);
   const [remoteModules, setRemoteModules] = useState<Module[] | null>(null);
   const [profileBoostOpen, setProfileBoostOpen] = useState(false);
 
@@ -155,6 +159,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isDemoMode && authUser && supabase) {
       repo.fetchJobs().then((j) => setRemoteJobs(j ?? []));
+      supabase.from("mentorships").select("*").eq("active",true).then(({data,error}) => {
+        if(error){console.warn("[mentorships]",error.message);return;}
+        const blockedDemoNames=new Set(["Carla Menezes","Juliana Prado","Renata Okada","Fernanda Lima"]);
+        setRemoteMentors((data??[]).filter(m=>!blockedDemoNames.has(m.mentor_name)).map(m=>({
+          id:m.id, mentor_name:m.mentor_name, mentor_role:m.mentor_role,
+          specialty:m.specialty, bio:m.bio??"", match_tags:m.match_tags??[],
+          tracks:["A","B"], goals:[], initials:m.mentor_name.split(/\s+/).slice(0,2).map((x:string)=>x[0]).join("").toUpperCase(),
+        } as Mentor)));
+      });
+      supabase.from("events").select("*").gte("starts_at",new Date().toISOString()).order("starts_at").then(({data,error})=>{
+        if(error){console.warn("[events]",error.message);return;}
+        setRemoteEvents((data??[]) as EventItem[]);
+      });
       supabase.from("learning_modules")
         .select("*").order("stage").order("sort_order")
         .then(({ data, error }) => {
@@ -271,7 +288,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   const value: Store = {
-    ...state, hydrated, isDemo: isDemoMode, authUser, authLoading, isAdmin, refreshProfile: handleRefresh, modules, jobs, journey, skills, celebration,
+    ...state, hydrated, isDemo: isDemoMode, authUser, authLoading, isAdmin, refreshProfile: handleRefresh,
+    modules, jobs, mentors: isDemoMode ? [] : remoteMentors, events: isDemoMode ? [] : remoteEvents, journey, skills, celebration,
     setView: (view) => setState((s) => ({ ...s, view: !isDemoMode && !isAdmin ? "aluna" : view })),
     updateProfile: (p) => setState((s) => {
       const profile = { ...s.profile, ...p };
