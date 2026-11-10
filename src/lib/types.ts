@@ -39,6 +39,16 @@ export interface ContentSlot {
   url: string; // placeholder editável
 }
 
+export interface LessonAsset {
+  id: string;
+  module_id: string;
+  asset_kind: "pdf" | "pptx" | "quiz_pdf" | "avatar_video";
+  original_filename: string;
+  storage_path: string | null;
+  external_url: string | null;
+  content_type: string | null;
+}
+
 export interface Module {
   id: string;
   stage: 2 | 4 | 5;
@@ -52,6 +62,10 @@ export interface Module {
   quiz: QuizQuestion[];
   slides?: { order: number; title: string; body: string }[];
   reviewRequired?: boolean;
+  assets?: LessonAsset[];
+  videoSummary?: string | null;
+  videoTranscript?: string | null;
+  videoStatus?: string;
 }
 
 export interface ModuleProgress {

@@ -3,6 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
+import LearningMediaManager from "@/components/admin/LearningMediaManager";
 
 type Course = {
   id:string; title:string; track:"A"|"B"|"all"; stage:2|4|5; order:number;
@@ -63,5 +64,6 @@ export default function Conteudos() {
       {status && <p role="status" className="rounded-lg bg-pink-50 p-3 text-sm text-navy-950">{status}</p>}
       <button className="btn-primary" disabled={busy || !courses.length} onClick={()=>void upload()}>{busy ? "Importando..." : "Importar para o Supabase"}</button>
     </section>
+    <LearningMediaManager />
   </div>;
 }
