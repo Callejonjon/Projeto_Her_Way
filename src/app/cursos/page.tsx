@@ -18,7 +18,7 @@ const filters: {id:Filter;label:string}[]=[
 ];
 
 function LessonDetail({module,onClose}:{module:Module;onClose:()=>void}) {
-  const {journey,completeReading}=useStore();
+  const {progress,completeReading}=useStore();
   const [index,setIndex]=useState(0);
   const [showQuiz,setShowQuiz]=useState(false);
   const [pdfOpen,setPdfOpen]=useState(false);
@@ -26,7 +26,7 @@ function LessonDetail({module,onClose}:{module:Module;onClose:()=>void}) {
   const [assetError,setAssetError]=useState("");
   const slides=module.slides??[];
   const slide=slides[index];
-  const finished=journey.passed.has(module.id);
+  const finished=progress.some(p=>p.module_id===module.id&&p.quiz_score>=70);
   const assets=module.assets??[];
   const assetFor=(kind:LessonAsset["asset_kind"])=>assets.find(a=>a.asset_kind===kind);
   const pdf=assetFor("pdf"),ppt=assetFor("pptx"),quizPdf=assetFor("quiz_pdf"),video=assetFor("avatar_video");
@@ -105,7 +105,7 @@ function LessonDetail({module,onClose}:{module:Module;onClose:()=>void}) {
 }
 
 function CourseList(){
-  const {catalogModules,journey,progress}=useStore();
+  const {catalogModules,progress}=useStore();
   const router=useRouter();
   const params=useSearchParams();
   const [filter,setFilter]=useState<Filter>("all");
@@ -123,7 +123,7 @@ function CourseList(){
       return <section key={stage} className="mb-9">
         <h2 className="mb-4 text-lg font-bold">{stages[stage]}</h2>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{items.map(m=>{
-          const done=journey.passed.has(m.id);
+          const done=progress.some(p=>p.module_id===m.id&&p.quiz_score>=70);
           const score=progress.find(p=>p.module_id===m.id)?.quiz_score;
           return <article key={m.id} className="card flex flex-col p-5">
             <div className="flex items-center justify-between">
