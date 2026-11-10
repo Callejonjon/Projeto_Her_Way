@@ -43,7 +43,7 @@ begin
   then raise exception 'Limite de 5 mensagens por minuto. Tente novamente em instantes.'; end if;
   select nullif(btrim(split_part(name, E'\n', 1)),'') into display_name
     from public.profiles where id = auth.uid();
-  new.sender_name := left(coalesce(display_name,'Participante'),50);
+  new.sender_name := left(split_part(coalesce(display_name,'Participante'), ' ', 1),50);
   new.created_at := now();
   return new;
 end $$;
