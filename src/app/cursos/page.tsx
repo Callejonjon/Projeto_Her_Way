@@ -1,7 +1,7 @@
 "use client";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AlertTriangle, BookOpen, Check, ChevronLeft, ChevronRight, Clock, Download, ExternalLink, FileText, PlayCircle, X } from "lucide-react";
+import { AlertTriangle, BookOpen, Check, ChevronLeft, ChevronRight, Clock, ExternalLink, FileText, Presentation, PlayCircle, X } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { PageHeader } from "@/components/ui";
@@ -18,18 +18,15 @@ const filters: {id:Filter;label:string}[]=[
 ];
 
 function LessonDetail({module,onClose}:{module:Module;onClose:()=>void}) {
-  const {progress,completeReading}=useStore();
-  const [index,setIndex]=useState(0);
-  const [showQuiz,setShowQuiz]=useState(false);
-  const [pdfOpen,setPdfOpen]=useState(false);
+  const {progress}=useStore();
+  const [slidePage,setSlidePage]=useState(1);
+  const [activeTab,setActiveTab]=useState<"pdf" | "powerpoint" | "quiz">("pdf");
   const [links,setLinks]=useState<Record<string,string>>({});
   const [assetError,setAssetError]=useState("");
-  const slides=module.slides??[];
-  const slide=slides[index];
   const finished=progress.some(p=>p.module_id===module.id&&p.quiz_score>=70);
   const assets=module.assets??[];
   const assetFor=(kind:LessonAsset["asset_kind"])=>assets.find(a=>a.asset_kind===kind);
-  const pdf=assetFor("pdf"),ppt=assetFor("pptx"),quizPdf=assetFor("quiz_pdf"),video=assetFor("avatar_video");
+  const pdf=assetFor("pdf"),ppt=assetFor("pptx"),video=assetFor("avatar_video");
   const videoUrl=video?.external_url??(video?links[video.id]:undefined);
 
   useEffect(()=>{
@@ -49,9 +46,12 @@ function LessonDetail({module,onClose}:{module:Module;onClose:()=>void}) {
   },[module.id,assets]);
 
   const href=(asset?:LessonAsset)=>asset ? (asset.external_url??links[asset.id]) : undefined;
-  const downloadable=(asset?:LessonAsset,label?:string)=>asset && href(asset)?<a className="btn-secondary inline-flex items-center justify-center gap-2" href={href(asset)} target="_blank" rel="noopener noreferrer" download={asset.external_url?undefined:asset.original_filename}>
-    <Download size={16}/>{label??asset.original_filename}
-  </a>:null;
+  // Browsers cannot display native PPTX reliably. The converted PDF preserves the
+  // presentation layout and provides in-platform slide navigation.
+  const pdfUrl=href(pdf);
+  const pptViewUrl=pdfUrl ? `${pdfUrl}#page=${slidePage}&toolbar=0&navpanes=0&view=FitH` : undefined;
+  const slideCount=module.slides?.length??0;
+  const quizAvailable=module.quiz.length>0;
 
   return <div className="fixed inset-0 z-50 flex items-end justify-center bg-navy-950/60 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label={module.title} onClick={onClose}>
     <div className="max-h-[94vh] w-full max-w-4xl overflow-y-auto rounded-t-3xl bg-white p-5 sm:rounded-3xl sm:p-8" onClick={e=>e.stopPropagation()}>
@@ -60,46 +60,48 @@ function LessonDetail({module,onClose}:{module:Module;onClose:()=>void}) {
         <button className="rounded-lg p-2 hover:bg-slate-100" onClick={onClose} aria-label="Fechar aula"><X size={21}/></button>
       </div>
       {module.reviewRequired&&<p className="mb-4 flex gap-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-900"><AlertTriangle size={18}/> Material sujeito à revisão de informações normativas e certificações.</p>}
-      {showQuiz?<Quiz module={module} onClose={()=>setShowQuiz(false)}/>:<>
-        <section className="mb-5 space-y-3">
-          <h3 className="font-bold">Aula em vídeo</h3>
-          {videoUrl ? (
-            /\.(mp4|webm)(\?|$)/i.test(videoUrl.split("#")[0]) || video?.storage_path
-              ? <video className="aspect-video w-full rounded-xl bg-navy-950" src={videoUrl} controls preload="metadata" playsInline />
-              : <a href={videoUrl} rel="noopener noreferrer" target="_blank" className="btn-primary inline-flex items-center gap-2"><PlayCircle size={18}/> Assistir aula com avatar <ExternalLink size={14}/></a>
-          ):<div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600"><PlayCircle className="mb-2 text-pink-500"/> Aula em vídeo em preparação. O material de leitura e o quiz continuam disponíveis.</div>}
-          {videoUrl&&module.videoSummary&&<p className="rounded-xl bg-pink-50 p-4 text-sm text-slate-700">{module.videoSummary}</p>}
-          {videoUrl&&module.videoTranscript&&<details className="rounded-xl border p-4"><summary className="cursor-pointer text-sm font-semibold">Transcrição do vídeo</summary><p className="mt-3 whitespace-pre-wrap text-sm text-slate-700">{module.videoTranscript}</p></details>}
-        </section>
+      <section className="mb-5 space-y-3">
+        <h3 className="font-bold">Aula em vídeo</h3>
+        {videoUrl ? (
+          /\\.(mp4|webm)(\\?|$)/i.test(videoUrl.split("#")[0]) || video?.storage_path
+            ? <video className="aspect-video w-full rounded-xl bg-navy-950" src={videoUrl} controls preload="metadata" playsInline />
+            : <a href={videoUrl} rel="noopener noreferrer" target="_blank" className="btn-primary inline-flex items-center gap-2"><PlayCircle size={18}/> Assistir aula com avatar <ExternalLink size={14}/></a>
+        ):<div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600"><PlayCircle className="mb-2 text-pink-500"/> Vídeo-aula em preparação. O material e os quizzes já podem ser acessados abaixo.</div>}
+        {videoUrl&&module.videoSummary&&<p className="rounded-xl bg-pink-50 p-4 text-sm text-slate-700">{module.videoSummary}</p>}
+        {videoUrl&&module.videoTranscript&&<details className="rounded-xl border p-4"><summary className="cursor-pointer text-sm font-semibold">Transcrição do vídeo</summary><p className="mt-3 whitespace-pre-wrap text-sm text-slate-700">{module.videoTranscript}</p></details>}
+      </section>
 
-        <section className="mb-5 space-y-3">
-          <h3 className="font-bold">Materiais originais da equipe</h3>
-          <div className="flex flex-wrap gap-2">
-            {pdf&&href(pdf)&&<button className="btn-primary" onClick={()=>setPdfOpen(v=>!v)}><FileText size={16}/>{pdfOpen?"Fechar PDF":"Ler apresentação em PDF"}</button>}
-            {downloadable(pdf,"Baixar PDF")}
-            {downloadable(ppt,"Baixar PowerPoint original")}
-            {downloadable(quizPdf,"Baixar quiz em PDF")}
-          </div>
-          {pdfOpen&&pdf&&href(pdf)&&<iframe src={href(pdf)} title={`Apresentação PDF: ${module.title}`} className="h-[65vh] w-full rounded-xl border border-slate-200" />}
-          {assetError&&<p role="alert" className="text-sm text-amber-700">{assetError}</p>}
-          {assets.length===0&&<p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">Os arquivos originais serão adicionados pela administração. Enquanto isso, o texto da aula continua disponível abaixo.</p>}
-        </section>
-
-        <details className="mb-5 rounded-xl border border-slate-200 p-4" open={!pdf}>
-          <summary className="cursor-pointer font-semibold">Texto acessível da aula</summary>
-          <div className="mt-3 flex justify-between text-xs text-slate-500"><span>Conteúdo estruturado para leitura</span><span>{slides.length?`Página ${index+1} de ${slides.length}`:"Em preparação"}</span></div>
-          <article className="mt-3 min-h-[160px] rounded-xl bg-slate-50 p-5"><h3 className="mb-3 text-lg font-bold">{slide?.title??module.title}</h3><p className="whitespace-pre-wrap break-words text-sm leading-7 text-slate-700">{slide?.body||"Sem texto adicional nesta página."}</p></article>
-          {slides.length>1&&<div className="mt-3 flex justify-between gap-2">
-            <button className="btn-secondary" disabled={index===0} onClick={()=>setIndex(i=>Math.max(0,i-1))}><ChevronLeft size={16}/>Anterior</button>
-            <button className="btn-secondary" disabled={index===slides.length-1} onClick={()=>setIndex(i=>Math.min(slides.length-1,i+1))}>Próxima página<ChevronRight size={16}/></button>
-          </div>}
-        </details>
-        <div className="flex justify-end">
-          {module.quiz.length>0
-            ?<button className="btn-primary" onClick={()=>setShowQuiz(true)}>{finished?"Refazer quiz":`Responder quiz (${module.quiz.length} questões)`}</button>
-            :<button className="btn-primary" disabled={finished||(!slides.length&&!pdf&&!video)} onClick={()=>completeReading(module.id)}>{finished?"Aula concluída":"Concluir aula (+30 XP)"}</button>}
+      <section className="space-y-4">
+        <h3 className="font-bold">Materiais e avaliação</h3>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3" role="tablist" aria-label="Tipo de material">
+          <button type="button" role="tab" aria-selected={activeTab==="pdf"} disabled={!pdf} className={activeTab==="pdf"?"btn-primary justify-center":"btn-secondary justify-center"} onClick={()=>setActiveTab("pdf")}><FileText size={17}/> Ver arquivo PDF</button>
+          <button type="button" role="tab" aria-selected={activeTab==="powerpoint"} disabled={!ppt||!pdf} className={activeTab==="powerpoint"?"btn-primary justify-center":"btn-secondary justify-center"} onClick={()=>{setActiveTab("powerpoint");setSlidePage(1);}}><Presentation size={17}/> Ver PowerPoint</button>
+          <button type="button" role="tab" aria-selected={activeTab==="quiz"} disabled={!quizAvailable} className={activeTab==="quiz"?"btn-primary justify-center":"btn-secondary justify-center"} onClick={()=>setActiveTab("quiz")}><BookOpen size={17}/> Fazer quiz {quizAvailable?`(${module.quiz.length})`:""}</button>
         </div>
-      </>}
+
+        {activeTab==="pdf"&&<div role="tabpanel" className="space-y-2">
+          {pdfUrl ? <iframe title={`Material PDF: ${module.title}`} src={`${pdfUrl}#toolbar=0&navpanes=0`} className="h-[68vh] min-h-80 w-full rounded-xl border border-slate-200 bg-white" /> :
+            <p className="rounded-xl bg-slate-50 p-5 text-sm text-slate-600">O arquivo PDF desta aula ainda não está disponível.</p>}
+        </div>}
+
+        {activeTab==="powerpoint"&&<div role="tabpanel" className="space-y-3">
+          <p className="text-xs text-slate-600">Visualização dos slides da apresentação original, convertidos para leitura no navegador.</p>
+          {pptViewUrl ? <>
+            <iframe key={slidePage} title={`Slide ${slidePage} de ${module.title}`} src={pptViewUrl} className="h-[65vh] min-h-80 w-full rounded-xl border border-slate-200 bg-white"/>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <button className="btn-secondary" disabled={slidePage===1} onClick={()=>setSlidePage(p=>Math.max(1,p-1))}><ChevronLeft size={16}/> Slide anterior</button>
+              <span className="text-xs text-slate-600">{slideCount ? `Slide ${slidePage} de ${slideCount}` : `Slide ${slidePage}`}</span>
+              <button className="btn-secondary" disabled={slideCount>0&&slidePage>=slideCount} onClick={()=>setSlidePage(p=>p+1)}>Próximo slide <ChevronRight size={16}/></button>
+            </div>
+          </> : <p className="rounded-xl bg-slate-50 p-5 text-sm text-slate-600">A apresentação ainda está sendo preparada para visualização.</p>}
+        </div>}
+
+        {activeTab==="quiz"&&<div role="tabpanel">
+          {quizAvailable ? <Quiz module={module} onClose={()=>setActiveTab("pdf")} /> :
+            <p className="rounded-xl bg-slate-50 p-5 text-sm text-slate-600">Este conteúdo não possui quiz interativo cadastrado.</p>}
+        </div>}
+        {assetError&&<p role="alert" className="text-sm text-amber-700">{assetError}</p>}
+      </section>
     </div>
   </div>;
 }
