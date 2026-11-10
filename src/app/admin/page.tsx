@@ -1,136 +1,89 @@
 "use client";
-import { BarChart3, Briefcase, GraduationCap, HeartHandshake, Lock, TrendingUp, Users } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { BarChart3, BookOpen, Briefcase, GraduationCap, HeartHandshake, Lock, RefreshCw, Users } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { ADMIN_STATS as S } from "@/lib/mock-data";
+import { supabase } from "@/lib/supabase";
 import { PageHeader, Stat } from "@/components/ui";
 
-/* ---------- Gráficos leves (SVG/CSS puro, sem dependências) ---------- */
-function Donut({ a, b }: { a: number; b: number }) {
-  const pa = (a / (a + b)) * 100;
-  return (
-    <div className="flex items-center gap-6">
-      <div className="relative h-36 w-36 shrink-0 rounded-full" role="img" aria-label={`Trilha A ${a}, Trilha B ${b}`}
-        style={{ background: `conic-gradient(#1E3A8A 0 ${pa}%, #EC4899 ${pa}% 100%)` }}>
-        <div className="absolute inset-5 grid place-items-center rounded-full bg-white text-center">
-          <div><p className="text-2xl font-extrabold">{a + b}</p><p className="text-[11px] text-slate-500">inscritas</p></div>
-        </div>
-      </div>
-      <ul className="space-y-3 text-sm">
-        <li><span className="mr-2 inline-block h-3 w-3 rounded-sm bg-navy-800" />Trilha A · Universitárias<p className="ml-5 font-bold">{a} ({Math.round(pa)}%)</p></li>
-        <li><span className="mr-2 inline-block h-3 w-3 rounded-sm bg-pink-500" />Trilha B · Transição<p className="ml-5 font-bold">{b} ({100 - Math.round(pa)}%)</p></li>
-      </ul>
-    </div>
-  );
-}
-
-function HBars({ data, color = "bg-navy-800", suffix = "" }: { data: { label: string; value: number }[]; color?: string; suffix?: string }) {
-  const max = Math.max(...data.map((d) => d.value));
-  return (
-    <ul className="space-y-3">
-      {data.map((d, i) => (
-        <li key={d.label}>
-          <div className="mb-1 flex justify-between text-xs"><span className="text-slate-600">{d.label}</span><span className="font-bold">{d.value}{suffix}{i > 0 && !suffix && <span className="ml-1 font-normal text-slate-400">({Math.round((d.value / data[0].value) * 100)}%)</span>}</span></div>
-          <div className="h-3 overflow-hidden rounded-full bg-slate-100"><div className={`h-full rounded-full ${color}`} style={{ width: `${(d.value / max) * 100}%` }} /></div>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function LineChart({ data }: { data: { month: string; A: number; B: number }[] }) {
-  const W = 520, H = 200, P = 30, min = 50, max = 90;
-  const x = (i: number) => P + (i * (W - 2 * P)) / (data.length - 1);
-  const y = (v: number) => H - P - ((v - min) / (max - min)) * (H - 2 * P);
-  const path = (k: "A" | "B") => data.map((d, i) => `${i ? "L" : "M"}${x(i)},${y(d[k])}`).join(" ");
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Evolução da nota média nos quizzes por trilha">
-      {[60, 70, 80, 90].map((v) => (
-        <g key={v}><line x1={P} x2={W - P} y1={y(v)} y2={y(v)} stroke="#e2e8f0" strokeDasharray={v === 70 ? "0" : "4 4"} />
-          <text x={4} y={y(v) + 4} fontSize="10" fill="#94a3b8">{v}</text></g>
-      ))}
-      <text x={W - P} y={y(70) - 4} fontSize="9" fill="#F59E0B" textAnchor="end">nota mínima</text>
-      {(["A", "B"] as const).map((k) => (
-        <g key={k}>
-          <path d={path(k)} fill="none" stroke={k === "A" ? "#1E3A8A" : "#EC4899"} strokeWidth={3} strokeLinecap="round" />
-          {data.map((d, i) => <circle key={i} cx={x(i)} cy={y(d[k])} r={4} fill="white" stroke={k === "A" ? "#1E3A8A" : "#EC4899"} strokeWidth={2} />)}
-        </g>
-      ))}
-      {data.map((d, i) => <text key={d.month} x={x(i)} y={H - 8} fontSize="11" fill="#64748b" textAnchor="middle">{d.month}</text>)}
-    </svg>
-  );
-}
-
+type Snapshot = {
+  a: number; b: number; unclassified: number;
+  progressCompleted: number; matched: number; applications: number; outcomes: number;
+  courses: number; published: number;
+};
+const zero: Snapshot = { a:0,b:0,unclassified:0,progressCompleted:0,matched:0,applications:0,outcomes:0,courses:0,published:0 };
 export default function Admin() {
-  const { view, setView } = useStore();
-
-  if (view !== "admin") {
-    return (
-      <div className="card mx-auto mt-10 max-w-md p-8 text-center">
-        <Lock className="mx-auto text-pink-500" size={40} />
-        <h1 className="mt-4 text-xl font-extrabold">Área restrita</h1>
-        <p className="mt-2 text-sm text-slate-600">O Painel de Impacto é exclusivo para a gestão do programa e banca avaliadora. Com Supabase ativo, o acesso é validado pela flag <code>is_admin</code>.</p>
-        <button className="btn-primary mt-6" onClick={() => setView("admin")}>Entrar como admin (demo)</button>
-      </div>
-    );
-  }
-
-  const total = S.inscritas.A + S.inscritas.B;
-  const concluded = S.stageFunnel.at(-1)!.value;
-  const hires = S.employability.at(-1)!.value;
-  const last = S.quizEvolution.at(-1)!, first = S.quizEvolution[0];
-  const evo = Math.round(((last.A + last.B) / 2 - (first.A + first.B) / 2));
-
-  return (
-    <>
-      <PageHeader eyebrow="Painel de Impacto (Admin)" title="O programa está funcionando?"
-        subtitle="KPIs executivos da jornada: inscrição → formação → mentoria → empregabilidade. Dados de demonstração (substituídos pela view vw_impact_kpis no Supabase)." />
-
+  const { view, setView, isAdmin } = useStore();
+  const [stats,setStats] = useState<Snapshot | null>(null);
+  const [loading,setLoading] = useState(true);
+  const [error,setError] = useState("");
+  const [revision,setRevision] = useState(0);
+  useEffect(() => {
+    if (!isAdmin || view !== "admin" || !supabase) return;
+    let alive=true;
+    const client=supabase;
+    async function load() {
+      setLoading(true);setError("");
+      const [profiles,completed,matches,applications,outcomes,catalog] = await Promise.all([
+        client.from("profiles").select("track_type"),
+        client.from("modules_progress").select("id",{count:"exact",head:true}).not("completed_at","is",null),
+        client.from("mentorship_matches").select("id",{count:"exact",head:true}),
+        client.from("applications").select("id",{count:"exact",head:true}),
+        client.from("career_outcomes").select("id",{count:"exact",head:true}),
+        client.from("learning_modules").select("published"),
+      ]);
+      if(!alive)return;
+      const requests=[profiles,completed,matches,applications,outcomes,catalog];
+      const err=requests.find(r=>r.error)?.error;
+      if(err){setStats(null);setError("Não foi possível carregar os indicadores reais: "+err.message);setLoading(false);return;}
+      const list=profiles.data??[],courses=catalog.data??[];
+      setStats({
+        a:list.filter(p=>p.track_type==="A").length,
+        b:list.filter(p=>p.track_type==="B").length,
+        unclassified:list.filter(p=>!p.track_type).length,
+        progressCompleted:completed.count??0,matched:matches.count??0,
+        applications:applications.count??0,outcomes:outcomes.count??0,
+        courses:courses.length,published:courses.filter(c=>c.published).length,
+      });setLoading(false);
+    }
+    void load();return()=>{alive=false};
+  },[isAdmin,view,revision]);
+  if(!isAdmin||view!=="admin")return <div className="card mx-auto mt-10 max-w-md p-8 text-center">
+    <Lock className="mx-auto text-pink-500" size={40}/>
+    <h1 className="mt-4 text-xl font-extrabold">Área restrita</h1>
+    <p className="mt-2 text-sm text-slate-600">Apenas contas administradoras autorizadas podem consultar estes dados.</p>
+    {isAdmin&&<button className="btn-primary mt-6" onClick={()=>setView("admin")}>Entrar na administração</button>}
+  </div>;
+  const S=stats??zero,total=S.a+S.b+S.unclassified;
+  return <div className="space-y-6">
+    <PageHeader title="Painel de Impacto" subtitle="Indicadores consultados no Supabase. Nenhuma estatística fictícia é exibida."/>
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <p className="text-sm text-slate-500">{loading?"Carregando indicadores...":error?"Dados indisponíveis":"Dados reais da plataforma · Atualizados ao recarregar"}</p>
+      <button className="btn-secondary" disabled={loading} onClick={()=>setRevision(v=>v+1)}><RefreshCw size={16}/> Atualizar dados</button>
+    </div>
+    {error&&<p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</p>}
+    {loading?<div className="card p-8 text-slate-500">Consultando a base de dados...</div>:
+    stats&&<>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Stat label="Total de inscritas" value={total} hint={`A: ${S.inscritas.A} · B: ${S.inscritas.B}`} icon={<Users size={18} className="text-navy-800" />} />
-        <Stat label="Taxa de conclusão" value={`${Math.round((concluded / total) * 100)}%`} hint={`${concluded} concluíram as 5 etapas`} icon={<GraduationCap size={18} className="text-solar-500" />} />
-        <Stat label="Participação em mentorias" value={`${S.mentorship.participacao}%`} hint={`${S.mentorship.pareamentos} pareamentos · NPS ${S.mentorship.nps}`} icon={<HeartHandshake size={18} className="text-pink-500" />} />
-        <Stat label="Contratações/promoções" value={hires} hint={`${Math.round((hires / S.employability[0].value) * 100)}% das candidaturas`} icon={<Briefcase size={18} className="text-navy-800" />} />
+        <Stat label="Contas cadastradas" value={total} hint={`Jornada A: ${S.a} · Jornada B: ${S.b} · Sem jornada: ${S.unclassified}`} icon={<Users size={18} className="text-navy-800"/>}/>
+        <Stat label="Módulos concluídos" value={S.progressCompleted} hint="Total de registros de conclusão, não usuários únicos" icon={<GraduationCap size={18} className="text-pink-500"/>}/>
+        <Stat label="Solicitações de mentoria" value={S.matched} hint="Registros de pareamento, não sessões realizadas" icon={<HeartHandshake size={18} className="text-pink-500"/>}/>
+        <Stat label="Desfechos profissionais" value={S.outcomes} hint="Contratações, promoções ou estágios registrados" icon={<Briefcase size={18} className="text-navy-800"/>}/>
       </div>
-
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <section className="card p-6">
-          <h2 className="mb-5 flex items-center gap-2 font-bold"><Users size={18} className="text-pink-500" /> Inscritas por trilha</h2>
-          <Donut a={S.inscritas.A} b={S.inscritas.B} />
+      <div className="grid gap-5 lg:grid-cols-2">
+        <section className="card p-6"><h2 className="flex items-center gap-2 font-bold"><BarChart3 size={18}/> Inscritas por jornada</h2>
+          <div className="mt-5 space-y-3 text-sm">
+            {[[ "Primeiros Passos",S.a ],["Novos Horizontes",S.b],["Ainda não escolheram",S.unclassified]].map(([label,n])=>
+              <div key={label}><div className="mb-1 flex justify-between"><span>{label}</span><strong>{n}</strong></div><div className="h-2 rounded-full bg-slate-100"><div className="h-full rounded-full bg-pink-500" style={{width:`${total?Number(n)/total*100:0}%`}}/></div></div>)}
+          </div>{total===0&&<p className="mt-4 text-xs text-slate-500">Nenhuma conta encontrada.</p>}
         </section>
-
-        <section className="card p-6">
-          <h2 className="mb-5 flex items-center gap-2 font-bold"><BarChart3 size={18} className="text-pink-500" /> Funil de conclusão das etapas</h2>
-          <HBars data={S.stageFunnel.map((s) => ({ label: s.stage, value: s.value }))} color="bg-gradient-to-r from-navy-800 to-navy-700" />
+        <section className="card p-6"><h2 className="flex items-center gap-2 font-bold"><BookOpen size={18}/> Conteúdos educativos</h2>
+          <p className="mt-4 text-3xl font-extrabold">{S.courses}</p><p className="text-sm text-slate-600">Módulos importados · {S.published} publicados</p>
+          <Link href="/admin/conteudos" className="btn-primary mt-5">Gerenciar conteúdos</Link>
         </section>
-
-        <section className="card p-6">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="flex items-center gap-2 font-bold"><TrendingUp size={18} className="text-pink-500" /> Evolução média nos quizzes</h2>
-            <span className="chip bg-solar-400/25 font-bold text-amber-800">+{evo} pts em 6 meses</span>
-          </div>
-          <LineChart data={S.quizEvolution} />
-          <div className="mt-2 flex gap-4 text-xs text-slate-600"><span><span className="mr-1 inline-block h-2 w-4 rounded bg-navy-800" />Trilha A</span><span><span className="mr-1 inline-block h-2 w-4 rounded bg-pink-500" />Trilha B</span></div>
-        </section>
-
-        <section className="card p-6">
-          <h2 className="mb-5 flex items-center gap-2 font-bold"><Briefcase size={18} className="text-pink-500" /> Funil de empregabilidade</h2>
-          <HBars data={S.employability} color="bg-gradient-to-r from-pink-500 to-pink-600" />
-        </section>
-
-        <section className="card p-6">
-          <h2 className="mb-5 flex items-center gap-2 font-bold"><HeartHandshake size={18} className="text-pink-500" /> Mentorias</h2>
-          <div className="grid grid-cols-2 gap-3">
-            {[["Pareamentos realizados", S.mentorship.pareamentos], ["Mentorias ativas", S.mentorship.ativas], ["Sessões realizadas", S.mentorship.sessoesRealizadas], ["NPS das mentoradas", S.mentorship.nps]].map(([l, v]) => (
-              <div key={l} className="rounded-xl bg-slate-50 p-4"><p className="text-2xl font-extrabold">{v}</p><p className="text-xs text-slate-500">{l}</p></div>
-            ))}
-          </div>
-        </section>
-
-        <section className="card p-6">
-          <h2 className="mb-5 flex items-center gap-2 font-bold"><BarChart3 size={18} className="text-pink-500" /> Contratações por área</h2>
-          <HBars data={S.byArea.map((a) => ({ label: a.area, value: a.value }))} color="bg-gradient-to-r from-solar-500 to-solar-400" suffix="" />
-        </section>
+        <section className="card p-6"><h2 className="flex items-center gap-2 font-bold"><Briefcase size={18}/> Candidaturas registradas</h2><p className="mt-4 text-3xl font-extrabold">{S.applications}</p><p className="text-sm text-slate-600">Registros no banco de dados; não equivalem a entrevistas ou contratações.</p></section>
+        <section className="card p-6"><h2 className="flex items-center gap-2 font-bold"><HeartHandshake size={18}/> Mentorias</h2><p className="mt-4 text-3xl font-extrabold">{S.matched}</p><p className="text-sm text-slate-600">Solicitações registradas, sujeitas a confirmação pela equipe.</p></section>
       </div>
-    </>
-  );
+    </>}
+  </div>;
 }

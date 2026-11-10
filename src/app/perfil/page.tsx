@@ -8,6 +8,7 @@ import { useStore } from "@/lib/store";
 import { AREAS } from "@/lib/mock-data";
 import { LEVEL_NAMES, levelProgress } from "@/lib/engine";
 import * as repo from "@/lib/repo";
+import { isDemoMode } from "@/lib/supabase";
 import { PageHeader, ProgressBar, TrackBadge } from "@/components/ui";
 import type { Area } from "@/lib/types";
 
@@ -153,7 +154,7 @@ export default function Perfil() {
             <p className="text-sm text-slate-600">Quer testar o fluxo do zero (outra trilha)?</p>
             <div className="flex gap-2">
               <Link href="/onboarding" className="btn-secondary">Refazer diagnóstico</Link>
-              <button className="btn-secondary" onClick={resetDemo}><RotateCcw size={16} /> Resetar demo</button>
+              {isDemoMode && <button className="btn-secondary" onClick={resetDemo}><RotateCcw size={16} /> Resetar demo</button>}
             </div>
           </section>
         </div>

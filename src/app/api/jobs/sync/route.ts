@@ -96,7 +96,8 @@ async function fromRss(): Promise<Job[]> {
 
 async function handler(req: Request) {
   const secret = process.env.CRON_SECRET;
-  const authorized = !secret || req.headers.get("authorization") === `Bearer ${secret}`;
+  const authorized = Boolean(secret) && req.headers.get("authorization") === `Bearer ${secret}`;
+  if (!authorized) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const all = [...(await fromApis()), ...(await fromRss())];
   const unique = [...new Map(all.filter((j) => j.source_url && RELEVANT.test(`${j.title} ${j.description}`) && isFinanceJob(j)).map((j) => [j.source_url, j])).values()];
