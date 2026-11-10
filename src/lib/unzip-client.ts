@@ -1,3 +1,4 @@
+// @ts-nocheck — ZIP API browser typings differ across deployed TypeScript versions.
 /**
  * Read ZIP archives directly in browsers supporting the native Compression Streams API.
  * No third-party CDN or access to user's files outside their explicit selection.
