@@ -17,6 +17,9 @@ export default function Perfil() {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({ bio: profile.bio, linkedin_url: profile.linkedin_url });
   const [cvMsg, setCvMsg] = useState<string | null>(null);
+  const [photoMsg,setPhotoMsg]=useState<string | null>(null);
+  const [photoUploading,setPhotoUploading]=useState(false);
+  const {refreshProfile}=useStore();
   const lp = levelProgress(profile.xp);
 
   const medals = [
@@ -30,11 +33,15 @@ export default function Perfil() {
     { icon: Trophy, title: "Ciclo Completo", desc: "Concluiu as 5 etapas", on: journey.stagesDone[5] },
   ];
 
-  function onAvatar(file?: File) {
-    if (!file || !file.type.startsWith("image/") || file.size > 1024 * 1024) return;
-    const r = new FileReader();
-    r.onload = () => updateProfile({ avatar_url: String(r.result) });
-    r.readAsDataURL(file);
+  async function onAvatar(file?: File) {
+    if(!file)return;
+    setPhotoUploading(true);setPhotoMsg(null);
+    try {
+      const {xp}=await repo.uploadProfilePhoto(file);
+      await refreshProfile();
+      setPhotoMsg(xp>0?"Foto salva! Você ganhou +30 XP pela primeira foto.":"Foto atualizada! Seu bônus de primeira foto já foi concedido.");
+    } catch(e){setPhotoMsg(e instanceof Error?e.message:"Não foi possível enviar a foto.");}
+    finally{setPhotoUploading(false);}
   }
 
   async function onCv(file?: File) {
@@ -73,12 +80,15 @@ export default function Perfil() {
                   ? <img src={profile.avatar_url} alt="" className="h-24 w-24 rounded-full border-4 border-white object-cover" />
                   : <span className="grid h-24 w-24 place-items-center rounded-full border-4 border-white bg-pink-500 text-3xl font-bold text-white">{profile.name.split(" ").map((n) => n[0]).slice(0, 2).join("")}</span>}
                 <span className="absolute inset-0 grid place-items-center rounded-full bg-navy-950/50 opacity-0 transition group-hover:opacity-100"><Camera className="text-white" /></span>
-                <input type="file" accept="image/*" className="sr-only" onChange={(e) => onAvatar(e.target.files?.[0])} />
+                <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={photoUploading} onChange={(e) => void onAvatar(e.target.files?.[0])} />
               </label>
               <button className="btn-secondary" onClick={() => (editing ? (saveDraft(), setEditing(false)) : setEditing(true))}>
                 {editing ? <><Save size={16} /> Salvar</> : <><Pencil size={16} /> Editar</>}
               </button>
             </div>
+            <p className="mt-2 text-xs text-slate-600">Foto opcional no perfil · necessária para agendar mentorias · +30 XP na primeira foto (JPG, PNG ou WebP até 2 MB).</p>
+            {photoMsg&&<p className="mt-2 rounded-lg bg-pink-50 p-2 text-xs text-navy-950" role="status">{photoMsg}</p>}
+            {photoUploading&&<p className="mt-2 text-xs text-slate-600">Enviando foto...</p>}
             <h2 className="mt-3 text-xl font-extrabold">{profile.name}</h2>
             <p className="text-sm text-slate-500">{profile.email}</p>
             <div className="mt-2"><TrackBadge track={profile.track_type} /></div>
