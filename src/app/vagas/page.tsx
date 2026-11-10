@@ -75,7 +75,7 @@ export default function Vagas() {
       <PageHeader eyebrow="Mural de Vagas" title={view === "admin" ? "Curadoria de vagas" : "Oportunidades para você"}
         action={isAdmin ? (
           <div className="flex flex-wrap gap-2">
-            <button className="btn-secondary" onClick={runSync} disabled={sync.loading}><RefreshCw size={16} className={sync.loading ? "animate-spin" : ""} /> Sincronizar feeds</button>
+            <button className="btn-secondary" onClick={runSync} disabled={sync.loading}><RefreshCw size={16} className={sync.loading ? "animate-spin" : ""} /> Atualizar vagas</button>
             <button className="btn-primary" onClick={() => setShowForm(true)}><Plus size={16} /> Cadastrar vaga manual / importar</button>
           </div>
         ) : undefined} />
@@ -132,7 +132,7 @@ export default function Vagas() {
                     <div className="min-w-0">
                       <div className="mb-2 flex flex-wrap gap-1">
                         {job.is_exclusive && <span className="chip bg-navy-950 text-white"><Sparkles size={10} /> Exclusiva parceira</span>}
-                        <span className={`chip ${src.cls}`}>{src.label}</span>
+                        {job.source === "himalayas" ? <a className={`chip ${src.cls}`} href="https://himalayas.app" target="_blank" rel="noopener noreferrer" aria-label="Fonte das vagas: Himalayas">{src.label} ↗</a> : <span className={`chip ${src.cls}`}>{src.label}</span>}
                         <span className="chip bg-slate-100 text-slate-600">{job.level_required}</span>
                       </div>
                       <h3 className="font-bold leading-snug">{job.title}</h3>
@@ -193,7 +193,8 @@ function JobForm({ onClose }: { onClose: () => void }) {
 
   function submit() {
     if (!f.title.trim() || !f.company.trim()) return setErr("Título e empresa são obrigatórios.");
-    addJob({ ...f, id: `job-${Date.now()}`, source: "manual", source_url: f.source_url || "#", created_at: new Date().toISOString() });
+    if (!/^https:\/\//i.test(f.source_url.trim())) return setErr("Insira a URL HTTPS verdadeira para a candidatura.");
+    addJob({ ...f, id: `job-${Date.now()}`, source: "manual", source_url: f.source_url.trim(), created_at: new Date().toISOString() });
     onClose();
   }
 
