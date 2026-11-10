@@ -40,6 +40,7 @@ interface Store extends PersistedState {
   updateProfile: (p: Partial<Profile>) => void;
   completeOnboarding: (p: Profile, extra?: Record<string, unknown>) => void;
   submitQuiz: (moduleId: string, score: number) => { passed: boolean; xp: number };
+  completeReading: (moduleId: string) => void;
   requestMentor: (mentorId: string, affinity: number) => void;
   connectLinkedin: (url: string) => void;
   registerEvent: (eventId: string) => void;
@@ -76,6 +77,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const [celebration, setCelebration] = useState<Celebration | null>(null);
   const [remoteJobs, setRemoteJobs] = useState<Job[] | null>(null);
+  const [remoteModules, setRemoteModules] = useState<Module[] | null>(null);
   const [profileBoostOpen, setProfileBoostOpen] = useState(false);
 
   // Demo state is browser-only. Real accounts are always isolated by Supabase Auth + RLS.
@@ -151,12 +153,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [state, hydrated]);
 
   useEffect(() => {
-    if (!isDemoMode && authUser) {
+    if (!isDemoMode && authUser && supabase) {
       repo.fetchJobs().then((j) => setRemoteJobs(j ?? []));
+      supabase.from("learning_modules")
+        .select("*").order("stage").order("sort_order")
+        .then(({ data, error }) => {
+          if (error) { console.warn("[learning_modules]", error.message); setRemoteModules([]); return; }
+          setRemoteModules((data ?? []).map((row) => ({
+            id: row.id, title: row.title, stage: row.stage, track: row.track,
+            description: (row.slides?.[0]?.body ?? "").slice(0, 185) || "Material produzido pela equipe Her Way.",
+            durationMin: row.duration_min ?? 30,
+            skillsGranted: row.skills_granted ?? [], content: [],
+            quiz: row.quiz ?? [], slides: row.slides ?? [],
+            reviewRequired: Boolean(row.review_required),
+          } as Module)));
+        });
     }
   }, [authUser]);
 
-  const modules = useMemo(() => modulesForTrack(MODULES, state.profile.track_type), [state.profile.track_type]);
+  const modules = useMemo(() => modulesForTrack(isDemoMode ? MODULES : (remoteModules ?? []), state.profile.track_type), [state.profile.track_type, remoteModules]);
   const journey = useMemo(
     () => computeJourney(modules, state.progress, state.onboarded, state.mentorRequests.length > 0),
     [modules, state.progress, state.onboarded, state.mentorRequests.length]);
@@ -187,7 +202,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     repo.saveModuleProgress(moduleId, score, passed);
     if (g) {
       repo.saveProfile(g.profile);
-      const mod = MODULES.find((m) => m.id === moduleId);
+      const mod = modules.find((m) => m.id === moduleId);
       setCelebration({
         title: g.levelUp ? `Nível ${g.levelUp} desbloqueado!` : "Conquista desbloqueada!",
         subtitle: `Você concluiu "${mod?.title}" com ${score}%. O próximo passo da jornada foi liberado.`,
@@ -195,7 +210,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       });
     }
     return { passed, xp };
-  }, [state.progress, state.profile, gainXp]);
+  }, [state.progress, state.profile, gainXp, modules]);
+
+  const completeReading = useCallback((moduleId: string) => {
+    const mod = modules.find((m) => m.id === moduleId);
+    if (!mod || mod.quiz.length || state.progress.some((p) => p.module_id === moduleId && p.completed_at)) return;
+    const entry: ModuleProgress = { module_id: moduleId, quiz_score: 100, completed_at: new Date().toISOString() };
+    const gained = gainXp(state.profile, 30);
+    setState((prev) => ({
+      ...prev,
+      progress: [...prev.progress.filter((p) => p.module_id !== moduleId), entry],
+      profile: gained.profile,
+    }));
+    // Quiz score 100 is a temporary progress marker for completion of non-quiz lessons.
+    // Replace with a dedicated completion_type column before high-stakes assessments.
+    void repo.saveModuleProgress(moduleId, 100, true);
+    void repo.saveProfile(gained.profile);
+    setCelebration({ title: "Aula concluída!", subtitle: `Você concluiu "${mod.title}" e ganhou 30 XP.`, xp: 30, levelUp: gained.levelUp });
+  }, [modules, state.progress, state.profile, gainXp]);
 
   const requestMentor = useCallback((mentorId: string, affinity: number) => {
     if (state.mentorRequests.includes(mentorId)) return;
@@ -256,6 +288,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }), 0);
     },
     submitQuiz,
+    completeReading,
     requestMentor,
     connectLinkedin,
     registerEvent: (eventId) =>
