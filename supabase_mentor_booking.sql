@@ -4,7 +4,8 @@ create table if not exists public.mentor_slots (
   id uuid primary key default gen_random_uuid(),
   mentor_id uuid not null references public.mentorships(id) on delete cascade,
   starts_at timestamptz not null,
-  ends_at timestamptz generated always as (starts_at + interval '30 minutes') stored,
+  ends_at timestamptz not null,
+  constraint slot_duration_30min check (ends_at=starts_at+interval '30 minutes'),
   created_at timestamptz not null default now(),
   unique(mentor_id,starts_at)
 );
@@ -72,7 +73,7 @@ begin
      and tstzrange(s.starts_at,s.ends_at,'[)')
       && tstzrange(v_start,v_start+interval '30 minutes','[)')
  ) then raise exception 'Horário já existe ou se sobrepõe a outro'; end if;
- insert into public.mentor_slots(mentor_id,starts_at) values(p_mentor,v_start) returning id into v_id;
+ insert into public.mentor_slots(mentor_id,starts_at,ends_at) values(p_mentor,v_start,v_start+interval '30 minutes') returning id into v_id;
  return v_id;
 end $$;
 revoke all on function public.mentor_create_slot(uuid,timestamp without time zone) from public;
