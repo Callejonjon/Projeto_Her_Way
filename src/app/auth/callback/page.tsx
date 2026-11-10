@@ -8,12 +8,20 @@ export default function Callback() {
   useEffect(() => {
     if (!supabase) { setError("Supabase não configurado."); return; }
     let cancelled = false;
+    const search = new URLSearchParams(window.location.search);
+    const hash = new URLSearchParams(window.location.hash.slice(1));
+    const recovery = search.get("type") === "recovery" || hash.get("type") === "recovery" || search.get("next") === "/auth/reset";
+    const callbackError = search.get("error_description") || hash.get("error_description");
+    if (callbackError) { setError(callbackError.replace(/\+/g, " ")); return; }
     async function finish() {
       // Supabase JS processes OAuth/confirmation fragments on startup.
       const { data, error } = await supabase!.auth.getSession();
       if (cancelled) return;
       if (error) setError(error.message);
-      else if (data.session) router.replace("/onboarding");
+      else if (data.session) {
+        if (recovery) router.replace("/auth/reset");
+        else router.replace("/");
+      }
       else setError("Não foi possível confirmar a sessão. Tente entrar novamente.");
     }
     void finish();
