@@ -6,6 +6,8 @@ import type { Area, EventItem, Job, MarketPill, Mentor, Module, ModuleProgress, 
    ========================================================================= */
 
 export const AREAS: Area[] = ["Asset Management", "Investment Banking", "Crédito", "Research", "Tech & Dados"];
+/** Áreas exibidas no Mural de Vagas: somente vagas de finanças (sem vagas de dados/tecnologia). */
+export const JOB_AREAS: Area[] = AREAS.filter((a) => a !== "Tech & Dados");
 export const SKILL_TAGS = ["Excel", "Python", "Power BI", "SQL", "CPA-20", "Inglês", "Valuation", "Análise de Balanço"];
 export const GOALS = ["Primeiro estágio", "Programa de férias", "Mudar de área", "Primeira vaga júnior", "Crescer para liderança"];
 
@@ -16,11 +18,11 @@ export const DEMO_PROFILE: Profile = {
   track_type: "A",
   level: 2,
   xp: 340,
-  interests: ["Asset Management", "Tech & Dados"],
+  interests: ["Asset Management", "Investment Banking"],
   skills: ["Excel", "Inglês"],
   bio: "Estudante de Economia (5º semestre), membro da liga de mercado financeiro. Apaixonada por dados e investimentos.",
-  avatar_url: null,
-  linkedin_url: "https://linkedin.com/in/ana-beatriz-souza",
+  avatar_url: "/images/avatar-ana.jpg",
+  linkedin_url: "", // vazio na demo para exibir o incentivo "Complete seu perfil e ganhe +50 XP"
   cv_url: "curriculo-ana-beatriz.pdf",
   goal: "Primeiro estágio",
 };
@@ -176,19 +178,20 @@ export const MODULES: Module[] = [
 
 export const MENTORS: Mentor[] = [
   { id: "mt1", mentor_name: "Carla Menezes", initials: "CM", mentor_role: "Head de Crédito Corporativo · Banco Horizonte", specialty: "Crédito",
-    bio: "15 anos estruturando operações de crédito. Fez a transição de engenharia para finanças.", match_tags: ["Excel", "Análise de Balanço", "Liderança"], tracks: ["B"], goals: ["Mudar de área", "Crescer para liderança"] },
+    bio: "15 anos estruturando operações de crédito. Fez a transição de engenharia para finanças.", match_tags: ["Excel", "Análise de Balanço", "Liderança"], tracks: ["B"], goals: ["Mudar de área", "Crescer para liderança"], quote: "Sua bagagem de outra área é um diferencial, não um obstáculo." },
   { id: "mt2", mentor_name: "Juliana Prado", initials: "JP", mentor_role: "Portfolio Manager · Aurora Asset", specialty: "Asset Management",
-    bio: "Gestora de fundos multimercado, CFA. Mentora da liga de mercado da USP.", match_tags: ["Python", "CPA-20", "Excel"], tracks: ["A"], goals: ["Primeiro estágio", "Programa de férias"] },
+    bio: "Gestora de fundos multimercado, CFA. Mentora da liga de mercado da USP.", match_tags: ["Python", "CPA-20", "Excel"], tracks: ["A"], goals: ["Primeiro estágio", "Programa de férias"],
+    photo_url: "/images/mentora-juliana.jpg", quote: "Acredito no potencial das mulheres para transformar o mercado financeiro." },
   { id: "mt3", mentor_name: "Renata Okada", initials: "RO", mentor_role: "VP de Investment Banking · Atlas Capital", specialty: "Investment Banking",
-    bio: "M&A e ECM. Já recrutou mais de 60 estagiárias para programas de férias.", match_tags: ["Valuation", "Excel", "Inglês"], tracks: ["A"], goals: ["Programa de férias", "Primeiro estágio"] },
+    bio: "M&A e ECM. Já recrutou mais de 60 estagiárias para programas de férias.", match_tags: ["Valuation", "Excel", "Inglês"], tracks: ["A"], goals: ["Programa de férias", "Primeiro estágio"], quote: "Preparação é o que transforma um processo seletivo em oportunidade." },
   { id: "mt4", mentor_name: "Fernanda Lima", initials: "FL", mentor_role: "Head de Dados · Fintech Nuvem", specialty: "Tech & Dados",
-    bio: "Lidera times de dados em fintech. Veio do varejo e migrou para dados financeiros.", match_tags: ["Python", "SQL", "Power BI"], tracks: ["A", "B"], goals: ["Mudar de área", "Primeira vaga júnior"] },
+    bio: "Lidera times de dados em fintech. Veio do varejo e migrou para dados financeiros.", match_tags: ["Python", "SQL", "Power BI"], tracks: ["A", "B"], goals: ["Mudar de área", "Primeira vaga júnior"], quote: "Tecnologia e finanças andam juntas: comece pelo básico bem feito." },
   { id: "mt5", mentor_name: "Patrícia Nogueira", initials: "PN", mentor_role: "Analista Sênior de Research · Corretora Vértice", specialty: "Research",
-    bio: "Cobre o setor de energia. Ama ensinar valuation e escrita de relatórios.", match_tags: ["Valuation", "Análise de Balanço", "Excel"], tracks: ["A", "B"], goals: ["Primeira vaga júnior", "Primeiro estágio"] },
+    bio: "Cobre o setor de energia. Ama ensinar valuation e escrita de relatórios.", match_tags: ["Valuation", "Análise de Balanço", "Excel"], tracks: ["A", "B"], goals: ["Primeira vaga júnior", "Primeiro estágio"], quote: "Curiosidade e método fazem uma grande analista." },
   { id: "mt6", mentor_name: "Marina Teixeira", initials: "MT", mentor_role: "Diretora de Private Banking · Banco Solar", specialty: "Asset Management",
-    bio: "Ex-advogada, migrou para investimentos aos 32. Especialista em transição de carreira.", match_tags: ["CPA-20", "Inglês", "Liderança"], tracks: ["B"], goals: ["Mudar de área", "Crescer para liderança"] },
+    bio: "Ex-advogada, migrou para investimentos aos 32. Especialista em transição de carreira.", match_tags: ["CPA-20", "Inglês", "Liderança"], tracks: ["B"], goals: ["Mudar de área", "Crescer para liderança"], quote: "Nunca é tarde para construir uma carreira de destaque em finanças." },
   { id: "mt7", mentor_name: "Beatriz Campos", initials: "BC", mentor_role: "Gerente de Risco de Crédito · Cooperativa Elo", specialty: "Crédito",
-    bio: "Modelagem de risco com Python. Mentora de iniciantes em dados aplicados a crédito.", match_tags: ["Python", "SQL", "Análise de Balanço"], tracks: ["A", "B"], goals: ["Primeira vaga júnior", "Mudar de área"] },
+    bio: "Modelagem de risco com Python. Mentora de iniciantes em dados aplicados a crédito.", match_tags: ["Python", "SQL", "Análise de Balanço"], tracks: ["A", "B"], goals: ["Primeira vaga júnior", "Mudar de área"], quote: "Entender risco é entender o negócio por inteiro." },
 ];
 
 const d = (daysAgo: number) => new Date(Date.now() - daysAgo * 86400000).toISOString();
@@ -203,9 +206,9 @@ export const JOBS: Job[] = [
   { id: "j3", title: "Analista de Crédito Júnior", company: "Banco Horizonte", area: "Crédito", modality: "Híbrido", level_required: "Júnior",
     skills_tags: ["Excel", "Análise de Balanço"], description: "Análise de demonstrações financeiras de empresas middle market.", location: "Belo Horizonte, MG",
     source: "manual", source_url: "#", is_exclusive: false, created_at: d(3) },
-  { id: "j4", title: "Analista de Dados – Investimentos", company: "Fintech Nuvem", area: "Tech & Dados", modality: "Remoto", level_required: "Júnior",
-    skills_tags: ["Python", "SQL", "Power BI"], description: "Pipelines e dashboards de performance de carteiras.", location: "Remoto (Brasil)",
-    source: "rss:vagas-dados", source_url: "#", is_exclusive: false, created_at: d(1) },
+  { id: "j4", title: "Analista de Investimentos Jr.", company: "Itaú Asset Management", area: "Asset Management", modality: "Híbrido", level_required: "Júnior",
+    skills_tags: ["Excel", "Inglês", "CPA-20"], description: "Suporte à gestão de fundos: acompanhamento de carteiras, relatórios a cotistas e análise de mercado.", location: "São Paulo, SP",
+    source: "manual", source_url: "https://vemparaoritau.com.br/", is_exclusive: true, created_at: d(1) },
   { id: "j5", title: "Assistente de Research (Transição)", company: "Corretora Vértice", area: "Research", modality: "Híbrido", level_required: "Transição",
     skills_tags: ["Excel", "Análise de Balanço", "Inglês"], description: "Vaga afirmativa para mulheres em transição: apoio na cobertura de utilities.", location: "Rio de Janeiro, RJ",
     source: "manual", source_url: "#", is_exclusive: true, created_at: d(4) },
@@ -215,9 +218,9 @@ export const JOBS: Job[] = [
   { id: "j7", title: "Estágio em Risco de Crédito", company: "Cooperativa Elo", area: "Crédito", modality: "Remoto", level_required: "Estágio",
     skills_tags: ["Python", "SQL", "Excel"], description: "Apoio na construção de modelos de score e monitoramento de carteira.", location: "Remoto (Brasil)",
     source: "remotive", source_url: "#", is_exclusive: false, created_at: d(2) },
-  { id: "j8", title: "Analista de BI Pleno – Tesouraria", company: "Banco Meridiano", area: "Tech & Dados", modality: "Híbrido", level_required: "Pleno",
-    skills_tags: ["Power BI", "SQL", "Excel"], description: "Dashboards de liquidez e fluxo de caixa para a tesouraria.", location: "São Paulo, SP",
-    source: "rss:vagas-dados", source_url: "#", is_exclusive: false, created_at: d(6) },
+  { id: "j8", title: "Analista de Produtos Financeiros", company: "XP Inc.", area: "Asset Management", modality: "Híbrido", level_required: "Pleno",
+    skills_tags: ["CPA-20", "Excel", "Inglês"], description: "Estruturação e curadoria de produtos de renda fixa e fundos para a plataforma de investimentos.", location: "São Paulo, SP",
+    source: "manual", source_url: "https://www.xpi.com.br/carreiras/", is_exclusive: false, created_at: d(2) },
   { id: "j9", title: "Estágio em Equity Research", company: "Ágora Research", area: "Research", modality: "Híbrido", level_required: "Estágio",
     skills_tags: ["Excel", "Valuation", "Inglês"], description: "Modelagem de empresas listadas e apoio na redação de relatórios.", location: "São Paulo, SP",
     source: "manual", source_url: "#", is_exclusive: false, created_at: d(7) },
@@ -227,18 +230,24 @@ export const JOBS: Job[] = [
   { id: "j11", title: "Analista de Produtos de Investimento (Transição)", company: "XPTO Investimentos", area: "Asset Management", modality: "Remoto", level_required: "Transição",
     skills_tags: ["CPA-20", "Excel", "Power BI"], description: "Curadoria de fundos e materiais educativos para clientes.", location: "Remoto (Brasil)",
     source: "remotive", source_url: "#", is_exclusive: true, created_at: d(3) },
-  { id: "j12", title: "Cientista de Dados Júnior – Crédito", company: "Fintech Nuvem", area: "Tech & Dados", modality: "Remoto", level_required: "Júnior",
-    skills_tags: ["Python", "SQL"], description: "Modelos de propensão e inadimplência para PJ.", location: "Remoto (Brasil)",
-    source: "rss:vagas-dados", source_url: "#", is_exclusive: false, created_at: d(1) },
+  { id: "j12", title: "Assessora de Investimentos", company: "Banco Safra", area: "Asset Management", modality: "Presencial", level_required: "Júnior",
+    skills_tags: ["CPA-20", "Inglês"], description: "Atendimento e assessoria a clientes de alta renda em investimentos e previdência.", location: "São Paulo, SP",
+    source: "manual", source_url: "https://www.safra.com.br/carreiras.htm", is_exclusive: false, created_at: d(1) },
+  { id: "j13", title: "Estágio em Gestão de Investimentos", company: "Galapagos Capital", area: "Asset Management", modality: "Híbrido", level_required: "Estágio",
+    skills_tags: ["Excel", "Inglês", "Fundamentos de Mercado"], description: "Programa Elas no Mercado Financeiro (afirmativo): apoio às equipes de gestão, crédito e wealth com mentoria de profissionais da casa.", location: "São Paulo, SP",
+    source: "manual", source_url: "https://galapagoscapital.com/vagas/", is_exclusive: true, created_at: d(1) },
+  { id: "j14", title: "Analista de Crédito Corporate Jr.", company: "BTG Pactual", area: "Crédito", modality: "Presencial", level_required: "Júnior",
+    skills_tags: ["Excel", "Análise de Balanço", "Inglês"], description: "Análise de risco de crédito de empresas e acompanhamento de covenants.", location: "São Paulo, SP",
+    source: "manual", source_url: "https://www.btgpactual.com/carreiras", is_exclusive: false, created_at: d(4) },
 ];
 
 export const EVENTS: EventItem[] = [
-  { id: "e1", title: "Café com Líderes: carreira em Asset Management", host: "Juliana Prado · Aurora Asset", kind: "Bate-papo", starts_at: "2026-10-22T19:00:00-03:00", location: "Online (Zoom)", url: "#", tracks: ["A", "B"] },
-  { id: "e2", title: "Women in Finance Meetup SP", host: "Comunidade Women in Finance", kind: "Networking", starts_at: "2026-10-28T18:30:00-03:00", location: "Av. Faria Lima, São Paulo", url: "#", tracks: ["A", "B"] },
-  { id: "e3", title: "Processo seletivo da Liga de Mercado Financeiro", host: "Liga de Mercado – FEA/USP", kind: "Liga Universitária", starts_at: "2026-11-03T17:00:00-03:00", location: "Híbrido", url: "#", tracks: ["A"] },
-  { id: "e4", title: "Transição de carreira para finanças: histórias reais", host: "Marina Teixeira · Banco Solar", kind: "Bate-papo", starts_at: "2026-11-06T19:30:00-03:00", location: "Online", url: "#", tracks: ["B"] },
-  { id: "e5", title: "Open Day Programa de Férias IB", host: "Atlas Capital", kind: "Empresa Parceira", starts_at: "2026-11-12T10:00:00-03:00", location: "São Paulo, SP", url: "#", tracks: ["A"] },
-  { id: "e6", title: "Workshop: Python para análise de crédito", host: "Cooperativa Elo", kind: "Empresa Parceira", starts_at: "2026-11-18T19:00:00-03:00", location: "Online", url: "#", tracks: ["A", "B"] },
+  { id: "e1", title: "Carreira em Asset Management: bastidores e oportunidades", host: "Juliana Prado · Portfolio Manager na Aurora Asset", kind: "Bate-papo", starts_at: "2026-11-10T19:00:00-03:00", location: "Online (Zoom)", url: "#", tracks: ["A", "B"], image_url: "/images/evento-asset.jpg", duration_min: 60 },
+  { id: "e2", title: "Women in Finance Meetup SP", host: "Comunidade Women in Finance", kind: "Networking", starts_at: "2026-11-19T18:30:00-03:00", location: "Av. Faria Lima, São Paulo", url: "#", tracks: ["A", "B"], duration_min: 120 },
+  { id: "e3", title: "Processo seletivo da Liga de Mercado Financeiro", host: "Liga de Mercado · FEA/USP", kind: "Liga Universitária", starts_at: "2026-11-24T17:00:00-03:00", location: "Híbrido", url: "#", tracks: ["A"], duration_min: 90 },
+  { id: "e4", title: "Transição de carreira para finanças: histórias reais", host: "Marina Teixeira · Diretora de Private Banking no Banco Solar", kind: "Bate-papo", starts_at: "2026-11-13T19:30:00-03:00", location: "Online", url: "#", tracks: ["B"], duration_min: 60 },
+  { id: "e5", title: "Open Day Programa de Férias IB", host: "Atlas Capital", kind: "Empresa Parceira", starts_at: "2026-12-03T10:00:00-03:00", location: "São Paulo, SP", url: "#", tracks: ["A"], duration_min: 180 },
+  { id: "e6", title: "Workshop: análise de crédito na prática", host: "Cooperativa Elo", kind: "Empresa Parceira", starts_at: "2026-12-09T19:00:00-03:00", location: "Online", url: "#", tracks: ["A", "B"], duration_min: 90 },
 ];
 
 export const MARKET_PILLS: MarketPill[] = [

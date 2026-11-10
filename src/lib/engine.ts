@@ -5,6 +5,9 @@ export const XP_LEVELS = [0, 200, 500, 900, 1400]; // XP mínimo para níveis 1.
 
 export const LEVEL_NAMES = ["Exploradora", "Aprendiz", "Analista", "Estrategista", "Protagonista"];
 
+/** Nome da jornada exibido no Dashboard para cada trilha. */
+export const TRACK_NAMES: Record<Track, string> = { A: "Primeiros Passos", B: "Novos Horizontes" };
+
 export function levelFromXp(xp: number): number {
   let level = 1;
   XP_LEVELS.forEach((min, i) => { if (xp >= min) level = i + 1; });
@@ -132,6 +135,12 @@ export function jobCompatibility(job: Job, skills: Set<string>, track: Track | n
   return { pct: Math.round(100 * (0.7 * coverage + 0.3 * fit)), have, missing };
 }
 
+/** Mural de Vagas: somente vagas de finanças — vagas de dados/BI/tecnologia ficam fora da plataforma. */
+const DATA_ROLE = /(dados|\bdata\b|cientista|scientist|\bBI\b|business intelligence|engineer|engenheir)/i;
+export function isFinanceJob(job: Job) {
+  return job.area !== "Tech & Dados" && !DATA_ROLE.test(job.title);
+}
+
 /** Skills efetivas = declaradas no perfil + concedidas pelos módulos aprovados. */
 export function effectiveSkills(profile: Profile, modules: Module[], passed: Set<string>) {
   const s = new Set(profile.skills);
@@ -165,4 +174,28 @@ export function decideTrack(a: DiagnosticAnswers): { track: Track; reason: strin
     ? "Você está na universidade ou começando: a Trilha A foca em estágios, ligas e programas de férias."
     : "Você já tem bagagem profissional: a Trilha B valoriza suas competências transferíveis e foca em vagas de transição.";
   return { track, reason, commitment };
+}
+
+/* ---------------------------------------------------------------------------
+   Competências (Dashboard): agrupam módulos da trilha e refletem o progresso real
+   --------------------------------------------------------------------------- */
+export type CompetencyStatus = "concluida" | "em_progresso" | "bloqueada";
+
+export const COMPETENCIES = [
+  { id: "mercado", name: "Mercado Financeiro", moduleIds: ["m2-mercado", "m2-areas"] },
+  { id: "investimentos", name: "Investimentos", moduleIds: ["m2-excel"] },
+  { id: "riscos", name: "Análise de Riscos", moduleIds: ["m2-balanco", "m2-dados"] },
+  { id: "produtos", name: "Produtos Financeiros", moduleIds: ["m4-cpa"] },
+  { id: "lideranca", name: "Liderança", moduleIds: ["m2-soft", "m2-transferiveis", "m4-entrevista"] },
+] as const;
+
+export type CompetencyId = (typeof COMPETENCIES)[number]["id"];
+
+export function competencyProgress(moduleIds: readonly string[], modules: Module[], journey: JourneyState) {
+  const ids = moduleIds.filter((id) => modules.some((m) => m.id === id));
+  const done = ids.filter((id) => journey.passed.has(id)).length;
+  const pct = ids.length ? Math.round((done / ids.length) * 100) : 0;
+  const status: CompetencyStatus = ids.length && done === ids.length ? "concluida"
+    : done > 0 || ids.some((id) => journey.unlocked.has(id)) ? "em_progresso" : "bloqueada";
+  return { done, total: ids.length, pct, status };
 }

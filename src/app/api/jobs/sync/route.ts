@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
+import { isFinanceJob } from "@/lib/engine";
 import type { Area, Job, JobLevel } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -8,7 +9,7 @@ export const dynamic = "force-dynamic";
 /* =============================================================================
    /api/jobs/sync — Automação híbrida de vagas
    1. Busca vagas em APIs abertas (Remotive) e feeds RSS configuráveis
-   2. Filtra por relevância (finanças/dados) e PADRONIZA no formato da tabela `jobs`
+   2. Filtra por relevância (somente finanças; vagas de dados/tecnologia são descartadas) e PADRONIZA no formato da tabela `jobs`
    3. Faz upsert no Supabase (dedupe por source_url) quando a SERVICE_ROLE_KEY existe
    Disparo: Vercel Cron (GET diário, vercel.json) ou botão "Sincronizar feeds" (POST).
    Escrita no banco exige CRON_SECRET (se configurado) para evitar abuso.
@@ -16,17 +17,15 @@ export const dynamic = "force-dynamic";
 
 const API_SOURCES = [
   { name: "remotive", url: "https://remotive.com/api/remote-jobs?category=finance&limit=25" },
-  { name: "remotive", url: "https://remotive.com/api/remote-jobs?category=data&limit=25" },
 ];
 const RSS_FEEDS: { name: string; url: string }[] = [
   // Adicione feeds RSS de vagas aqui (ex.: portais de vagas, páginas de carreira com RSS)
   { name: "rss:weworkremotely-finance", url: "https://weworkremotely.com/categories/remote-finance-and-legal-jobs.rss" },
 ];
 
-const RELEVANT = /(financ|finance|invest|asset|credit|crédito|credito|risk|risco|bank|banc|treasury|tesour|research|equity|analyst|analista|data|dados|accounting|contab|fp&a|controller|quant)/i;
+const RELEVANT = /(financ|finance|invest|asset|credit|crédito|credito|risk|risco|bank|banc|treasury|tesour|research|equity|analyst|analista|accounting|contab|fp&a|controller|quant)/i;
 
 const AREA_RULES: [RegExp, Area][] = [
-  [/(data|dados|python|sql|bi\b|engineer|scientist|analytics)/i, "Tech & Dados"],
   [/(credit|crédito|credito|risk|risco|loan|underwrit)/i, "Crédito"],
   [/(m&a|investment bank|ib\b|corporate finance|capital markets)/i, "Investment Banking"],
   [/(research|equity analyst|economist)/i, "Research"],
@@ -66,7 +65,7 @@ async function fromApis(): Promise<Job[]> {
   const out: Job[] = [];
   for (const src of API_SOURCES) {
     try {
-      const res = await fetch(src.url, { signal: AbortSignal.timeout(8000), headers: { "User-Agent": "Grupo4-JobSync/1.0" } });
+      const res = await fetch(src.url, { signal: AbortSignal.timeout(8000), headers: { "User-Agent": "HerWay-JobSync/1.0" } });
       if (!res.ok) continue;
       const data = (await res.json()) as { jobs?: { title: string; company_name: string; description: string; url: string; candidate_required_location?: string; publication_date?: string }[] };
       for (const j of data.jobs ?? []) {
@@ -81,7 +80,7 @@ async function fromRss(): Promise<Job[]> {
   const out: Job[] = [];
   for (const feed of RSS_FEEDS) {
     try {
-      const res = await fetch(feed.url, { signal: AbortSignal.timeout(8000), headers: { "User-Agent": "Grupo4-JobSync/1.0" } });
+      const res = await fetch(feed.url, { signal: AbortSignal.timeout(8000), headers: { "User-Agent": "HerWay-JobSync/1.0" } });
       if (!res.ok) continue;
       const xml = await res.text();
       for (const item of xml.match(/<item>[\s\S]*?<\/item>/g) ?? []) {
@@ -100,7 +99,7 @@ async function handler(req: Request) {
   const authorized = !secret || req.headers.get("authorization") === `Bearer ${secret}`;
 
   const all = [...(await fromApis()), ...(await fromRss())];
-  const unique = [...new Map(all.filter((j) => j.source_url && RELEVANT.test(`${j.title} ${j.description}`)).map((j) => [j.source_url, j])).values()];
+  const unique = [...new Map(all.filter((j) => j.source_url && RELEVANT.test(`${j.title} ${j.description}`) && isFinanceJob(j)).map((j) => [j.source_url, j])).values()];
 
   let saved = 0;
   const db = createServiceClient();

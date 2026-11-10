@@ -68,6 +68,8 @@ export interface Mentor {
   tracks: Track[];
   goals: string[];
   initials: string;
+  photo_url?: string;
+  quote?: string;
 }
 
 export interface Job {
@@ -95,6 +97,8 @@ export interface EventItem {
   location: string;
   url: string;
   tracks: Track[];
+  image_url?: string;
+  duration_min?: number;
 }
 
 export interface MarketPill {

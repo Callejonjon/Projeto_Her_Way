@@ -12,7 +12,7 @@ import { PageHeader, ProgressBar, TrackBadge } from "@/components/ui";
 import type { Area } from "@/lib/types";
 
 export default function Perfil() {
-  const { profile, updateProfile, journey, progress, mentorRequests, appliedJobs, resetDemo } = useStore();
+  const { profile, updateProfile, connectLinkedin, journey, progress, mentorRequests, appliedJobs, resetDemo } = useStore();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({ bio: profile.bio, linkedin_url: profile.linkedin_url });
   const [cvMsg, setCvMsg] = useState<string | null>(null);
@@ -44,6 +44,15 @@ export default function Perfil() {
     setCvMsg("Currículo atualizado! ✅");
   }
 
+  // Primeira vez que o LinkedIn é informado conta como "completar o perfil" (+50 XP)
+  function saveDraft() {
+    const li = draft.linkedin_url.trim();
+    if (li && !profile.linkedin_url) {
+      connectLinkedin(li);
+      updateProfile({ bio: draft.bio });
+    } else updateProfile(draft);
+  }
+
   const toggleInterest = (a: Area) =>
     updateProfile({ interests: profile.interests.includes(a) ? profile.interests.filter((x) => x !== a) : [...profile.interests, a] });
 
@@ -65,7 +74,7 @@ export default function Perfil() {
                 <span className="absolute inset-0 grid place-items-center rounded-full bg-navy-950/50 opacity-0 transition group-hover:opacity-100"><Camera className="text-white" /></span>
                 <input type="file" accept="image/*" className="sr-only" onChange={(e) => onAvatar(e.target.files?.[0])} />
               </label>
-              <button className="btn-secondary" onClick={() => (editing ? (updateProfile(draft), setEditing(false)) : setEditing(true))}>
+              <button className="btn-secondary" onClick={() => (editing ? (saveDraft(), setEditing(false)) : setEditing(true))}>
                 {editing ? <><Save size={16} /> Salvar</> : <><Pencil size={16} /> Editar</>}
               </button>
             </div>
