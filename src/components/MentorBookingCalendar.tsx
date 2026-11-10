@@ -44,7 +44,7 @@ export default function MentorBookingCalendar({mentor,onClose}:{mentor:Mentor;on
  const [adminSlots,setAdminSlots]=useState<Slot[]>([]);
  const days=useMemo(()=>futureDays(),[]);
  const today=selectedDay||days[0].key;
- const ownActive=bookings.find(b=>b.status==="confirmed");
+ const ownActive=bookings.find(b=>b.status==="confirmed"&&new Date(b.mentor_slots?.ends_at??0).getTime()>Date.now());
  const photoReady=Boolean(profile.profile_photo_path);
  const ownThisMentor=ownActive?.mentor_slots?.mentor_id===mentor.id;
  const dateSlots=slots.filter(s=>dayKey(s.starts_at)===today);
