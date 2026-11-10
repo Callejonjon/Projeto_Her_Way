@@ -1,5 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
+import MentorBookingCalendar from "@/components/MentorBookingCalendar";
 import { CalendarDays, CheckCircle2, ExternalLink, Info, MapPin, Send, Sparkles } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { mentorAffinity } from "@/lib/engine";
@@ -10,9 +11,10 @@ import { fmtDay, fmtMonth, fmtTime } from "@/lib/format";
 const KINDS: (EventItem["kind"] | "Todos")[] = ["Todos", "Networking", "Bate-papo", "Liga Universitária", "Empresa Parceira"];
 
 export default function Mentoria() {
-  const { profile, skills, mentorRequests, requestMentor, journey, mentors, events: upcomingEvents } = useStore();
+  const { profile, skills, journey, mentors, events: upcomingEvents } = useStore();
   const [kind, setKind] = useState<(typeof KINDS)[number]>("Todos");
   const [showRule, setShowRule] = useState(false);
+  const [calendarMentorId,setCalendarMentorId] = useState<string|null>(null);
 
   const ranked = useMemo(
     () => mentors.map((m) => mentorAffinity(profile, m, skills)).sort((a, b) => b.score - a.score),
@@ -49,7 +51,6 @@ export default function Mentoria() {
         {ranked.length === 0 && <p className="card mb-4 p-6 text-sm text-slate-600">Ainda não há mentoras verificadas disponíveis. Em breve divulgaremos as profissionais participantes.</p>}
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {ranked.map(({ mentor, score, reasons }, i) => {
-            const requested = mentorRequests.includes(mentor.id);
             return (
               <article key={mentor.id} className={`card flex flex-col p-5 ${i === 0 ? "ring-2 ring-pink-400" : ""}`}>
                 {i === 0 && <span className="chip mb-3 w-fit bg-pink-500 text-white">★ Melhor match</span>}
@@ -72,14 +73,16 @@ export default function Mentoria() {
                   <span className="chip bg-navy-800/10 text-navy-800">{mentor.specialty}</span>
                   {mentor.match_tags.map((t) => <span key={t} className="chip bg-slate-100 text-slate-600">{t}</span>)}
                 </div>
-                <button className={requested ? "btn-secondary mt-4" : "btn-primary mt-4"} disabled={requested} onClick={() => requestMentor(mentor.id, score)}>
-                  {requested ? <><CheckCircle2 size={16} /> Solicitação enviada</> : <><Send size={16} /> Solicitar mentoria</>}
+                <button className="btn-primary mt-4 justify-center" onClick={() => setCalendarMentorId(mentor.id)}>
+                  <CalendarDays size={16}/> Ver disponibilidade e agendar
                 </button>
               </article>
             );
           })}
         </div>
       </section>
+
+      {calendarMentorId && mentors.find(m=>m.id===calendarMentorId) && <MentorBookingCalendar mentor={mentors.find(m=>m.id===calendarMentorId)!} onClose={()=>setCalendarMentorId(null)}/>}
 
       <section aria-labelledby="ev-title" className="mt-12">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
