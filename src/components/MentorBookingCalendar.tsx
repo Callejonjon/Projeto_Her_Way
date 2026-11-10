@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, Clock, X, CheckCircle2, AlertCircle, Trash2 } from "lucide-react";
+import { CalendarDays, Clock, X, CheckCircle2, AlertCircle, Trash2, Camera } from "lucide-react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { useStore } from "@/lib/store";
 import type { Mentor } from "@/lib/types";
@@ -27,10 +28,9 @@ function futureDays(n=21):{key:string;day:string;dayOfMonth:string}[]{
   return {key,day:weekDays[weekday],dayOfMonth:String(noon.getUTCDate()).padStart(2,"0")};
  });
 }
-function errMsg(e:unknown):string{return e instanceof Error?e.message:String(e||"Erro inesperado");}
 
 export default function MentorBookingCalendar({mentor,onClose}:{mentor:Mentor;onClose:()=>void}){
- const {authUser,isAdmin}=useStore();
+ const {authUser,isAdmin,profile}=useStore();
  const [slots,setSlots]=useState<Slot[]>([]);
  const [bookings,setBookings]=useState<Booking[]>([]);
  const [selectedDay,setSelectedDay]=useState("");
@@ -45,6 +45,7 @@ export default function MentorBookingCalendar({mentor,onClose}:{mentor:Mentor;on
  const days=useMemo(()=>futureDays(),[]);
  const today=selectedDay||days[0].key;
  const ownActive=bookings.find(b=>b.status==="confirmed");
+ const photoReady=Boolean(profile.profile_photo_path);
  const ownThisMentor=ownActive?.mentor_slots?.mentor_id===mentor.id;
  const dateSlots=slots.filter(s=>dayKey(s.starts_at)===today);
  const groupSlots=adminSlots.filter(s=>dayKey(s.starts_at)===today);
@@ -68,6 +69,7 @@ export default function MentorBookingCalendar({mentor,onClose}:{mentor:Mentor;on
  useEffect(()=>{void reload();const timer=setInterval(()=>void reload(),30000);return()=>clearInterval(timer)},[reload]);
  async function book(){
   if(!supabase||!selectedSlot||busy)return;
+  if(!photoReady){setError("Adicione uma foto no Meu Perfil antes de confirmar a mentoria.");return;}
   setBusy(true);setError("");setSuccess("");
   const r=await supabase.rpc("mentor_book_session",{p_slot:selectedSlot});
   if(r.error)setError(r.error.message);
@@ -116,6 +118,11 @@ export default function MentorBookingCalendar({mentor,onClose}:{mentor:Mentor;on
     <p className="mt-1 text-xs text-slate-600">A plataforma registra o horário; o link da chamada será combinado com a equipe de mentoria.</p>
     <button className="btn-secondary mt-3" disabled={busy} onClick={()=>void cancel()}>Cancelar minha reserva</button>
    </section>}
+   {!photoReady&&!ownActive&&<div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+     <p className="flex items-center gap-2 font-semibold text-amber-900"><Camera size={18}/> Foto necessária para reservar mentoria</p>
+     <p className="mt-1 text-sm text-amber-800">A foto é opcional no restante da Her Way. Ao cadastrar sua primeira foto, você também ganha +30 XP.</p>
+     <Link href="/perfil" className="btn-secondary mt-3 inline-flex" onClick={onClose}>Adicionar foto em Meu Perfil</Link>
+   </div>}
    <h3 className="mb-3 font-bold">Escolha o dia</h3>
    <div className="mb-5 flex gap-2 overflow-x-auto pb-2" aria-label="Selecionar dia">
     {days.map(d=><button key={d.key} type="button" onClick={()=>{setSelectedDay(d.key);setSelectedSlot(null)}} aria-pressed={today===d.key}
@@ -129,7 +136,7 @@ export default function MentorBookingCalendar({mentor,onClose}:{mentor:Mentor;on
     <div className="mb-4 grid grid-cols-3 gap-2 sm:grid-cols-4">{dateSlots.map(slot=><button key={slot.id} type="button"
       onClick={()=>setSelectedSlot(slot.id)} aria-pressed={selectedSlot===slot.id}
       className={`rounded-xl border px-3 py-3 text-sm font-semibold ${selectedSlot===slot.id?"border-pink-500 bg-pink-500 text-white":"border-slate-200 text-navy-950 hover:border-pink-300"}`}>{hm.format(new Date(slot.starts_at))}</button>)}</div>}
-   {!ownActive&&dateSlots.length>0&&<button className="btn-primary mt-2 w-full justify-center" disabled={!selectedSlot||busy} onClick={()=>void book()}>
+   {!ownActive&&dateSlots.length>0&&<button className="btn-primary mt-2 w-full justify-center" disabled={!selectedSlot||busy||!photoReady} onClick={()=>void book()}>
     <CalendarDays size={17}/>{busy?"Confirmando...":"Confirmar horário escolhido"}
    </button>}
    {ownActive&&!ownThisMentor&&<p className="mt-3 text-xs text-slate-500">Para reservar com esta mentora, cancele primeiro sua outra reserva ativa.</p>}
