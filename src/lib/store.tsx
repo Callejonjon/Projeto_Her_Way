@@ -234,7 +234,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     repo.saveModuleProgress(moduleId, score, passed);
     if (g) {
       repo.saveProfile(g.profile);
-      const mod = modules.find((m) => m.id === moduleId);
+      const mod = catalogModules.find((m) => m.id === moduleId);
       setCelebration({
         title: g.levelUp ? `Nível ${g.levelUp} desbloqueado!` : "Conquista desbloqueada!",
         subtitle: `Você concluiu "${mod?.title}" com ${score}%. O próximo passo da jornada foi liberado.`,
@@ -242,10 +242,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       });
     }
     return { passed, xp };
-  }, [state.progress, state.profile, gainXp, modules]);
+  }, [state.progress, state.profile, gainXp, catalogModules]);
 
   const completeReading = useCallback((moduleId: string) => {
-    const mod = modules.find((m) => m.id === moduleId);
+    const mod = catalogModules.find((m) => m.id === moduleId);
     if (!mod || mod.quiz.length || state.progress.some((p) => p.module_id === moduleId && p.completed_at)) return;
     const entry: ModuleProgress = { module_id: moduleId, quiz_score: 100, completed_at: new Date().toISOString() };
     const gained = gainXp(state.profile, 30);
@@ -259,7 +259,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     void repo.saveModuleProgress(moduleId, 100, true);
     void repo.saveProfile(gained.profile);
     setCelebration({ title: "Aula concluída!", subtitle: `Você concluiu "${mod.title}" e ganhou 30 XP.`, xp: 30, levelUp: gained.levelUp });
-  }, [modules, state.progress, state.profile, gainXp]);
+  }, [catalogModules, state.progress, state.profile, gainXp]);
 
   const requestMentor = useCallback((mentorId: string, affinity: number) => {
     if (state.mentorRequests.includes(mentorId)) return;
