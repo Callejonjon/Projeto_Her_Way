@@ -8,7 +8,7 @@ import type { Job, Area, JobLevel, Modality } from "@/lib/types";
  * JOOBLE    — official regional API (requires server-side JOOBLE_BR_API_KEY).
  * No candidate data or user credentials are sent to these services.
  */
-const SEARCHES=["estágio financeiro","analista financeiro","investimentos","crédito","tesouraria","controladoria"];
+const SEARCHES=["estágio financeiro","analista financeiro","investimentos","crédito"];
 const RELEVANT_TITLE=/(financ|invest|asset|crédito|credito|risk|risco|bank|banc|tesour|treasury|controlador|contab|auditor|equity|research|valuation|mercado de capitais|planejamento financeiro|fp&a)/i;
 const EXCLUDE_TITLE=/(desenvolvedor|developer|engenheir.*software|marketing digital|design|vendedor|vendas|corretor de im[oó]veis|motorista|suporte t[eé]cnico)/i;
 const AREAS:[RegExp,Area][]=[
@@ -70,7 +70,7 @@ function normalizeJob(r:Raw):Job|null {
   };
 }
 async function fetchJSON(url:string,init?:RequestInit):Promise<unknown>{
-  const response=await fetch(url,{cache:"no-store",signal:AbortSignal.timeout(9500),
+  const response=await fetch(url,{cache:"no-store",signal:AbortSignal.timeout(5500),
     headers:{"Accept":"application/json","User-Agent":"HerWay-JobBoard/1.1",...init?.headers},...init});
   if(!response.ok)throw new Error("HTTP "+response.status);
   return response.json();
