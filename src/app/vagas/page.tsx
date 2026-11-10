@@ -106,7 +106,7 @@ export default function Vagas() {
             <div>
               <p className="mb-1 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-pink-600"><Sparkles size={15}/> Seleção da Her Way</p>
               <h2 id="featured-jobs-title" className="text-xl font-extrabold text-navy-950 sm:text-2xl">Vagas destaque</h2>
-              <p className="mt-1 text-sm text-slate-600">Oportunidades da Galapagos Capital selecionadas para a comunidade.</p>
+              <p className="mt-1 text-sm text-slate-600">Oportunidades selecionadas para impulsionar sua carreira no mercado financeiro.</p>
             </div>
             <span className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-navy-800 shadow-sm">Fonte: Gupy · sem parceria comercial</span>
           </div>
