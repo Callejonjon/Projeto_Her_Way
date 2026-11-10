@@ -63,7 +63,7 @@ function LessonDetail({module,onClose}:{module:Module;onClose:()=>void}) {
       <section className="mb-5 space-y-3">
         <h3 className="font-bold">Aula em vídeo</h3>
         {videoUrl ? (
-          /\\.(mp4|webm)(\\?|$)/i.test(videoUrl.split("#")[0]) || video?.storage_path
+          /\.(mp4|webm)(\?|$)/i.test(videoUrl.split("#")[0]) || video?.storage_path
             ? <video className="aspect-video w-full rounded-xl bg-navy-950" src={videoUrl} controls preload="metadata" playsInline />
             : <a href={videoUrl} rel="noopener noreferrer" target="_blank" className="btn-primary inline-flex items-center gap-2"><PlayCircle size={18}/> Assistir aula com avatar <ExternalLink size={14}/></a>
         ):<div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600"><PlayCircle className="mb-2 text-pink-500"/> Vídeo-aula em preparação. O material e os quizzes já podem ser acessados abaixo.</div>}
