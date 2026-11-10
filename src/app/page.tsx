@@ -3,7 +3,6 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { ArrowRight } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { EVENTS, MENTORS } from "@/lib/mock-data";
 import { jobCompatibility, mentorAffinity, TRACK_NAMES } from "@/lib/engine";
 import JourneyStepper from "@/components/JourneyStepper";
 import TopBar from "@/components/dashboard/TopBar";
@@ -15,21 +14,21 @@ import CompetenciesSection from "@/components/dashboard/CompetenciesSection";
 import { CardHeader } from "@/components/dashboard/shared";
 
 export default function Dashboard() {
-  const { profile, skills, jobs, onboarded, hydrated } = useStore();
+  const { profile, skills, jobs, mentors, events, onboarded, hydrated } = useStore();
 
   const topMentor = useMemo(
-    () => MENTORS.map((m) => mentorAffinity(profile, m, skills)).sort((a, b) => b.score - a.score)[0],
-    [profile, skills]);
+    () => mentors.map((m) => mentorAffinity(profile, m, skills)).sort((a, b) => b.score - a.score)[0],
+    [profile, skills, mentors]);
   const topJobs = useMemo(
     () => jobs.map((j) => ({ job: j, m: jobCompatibility(j, skills, profile.track_type) })).sort((a, b) => b.m.pct - a.m.pct).slice(0, 3),
     [jobs, skills, profile.track_type]);
   // Próximo evento da trilha (depende do relógio: calculado só após a hidratação para evitar mismatch SSR)
   const nextEvent = useMemo(() => {
     if (!hydrated) return null;
-    const mine = EVENTS.filter((e) => !profile.track_type || e.tracks.includes(profile.track_type))
+    const mine = events.filter((e) => !profile.track_type || e.tracks.includes(profile.track_type))
       .sort((a, b) => a.starts_at.localeCompare(b.starts_at));
-    return mine.find((e) => new Date(e.starts_at).getTime() >= Date.now()) ?? mine[mine.length - 1] ?? null;
-  }, [hydrated, profile.track_type]);
+    return mine.find((e) => new Date(e.starts_at).getTime() >= Date.now()) ?? null;
+  }, [hydrated, profile.track_type, events]);
 
   return (
     <div className="space-y-4 lg:space-y-5">
