@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  ArrowLeftRight, BarChart3, BookOpen, Briefcase, ChevronRight, FileText, Home, Linkedin, Map, Menu, ShieldCheck, Sparkles, Star, User, Users, X,
+  ArrowLeftRight, BarChart3, BookOpen, Briefcase, ChevronRight, FileText, Home, Linkedin, Map, Menu, MessageCircle, ShieldCheck, Sparkles, Star, User, Users, X,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { LEVEL_NAMES, levelProgress } from "@/lib/engine";
@@ -21,6 +21,7 @@ const STUDENT_NAV = [
   { href: "/cursos", label: "Cursos e Quizzes", icon: BookOpen },
   { href: "/mentoria", label: "Mentoria e Networking", icon: Users },
   { href: "/vagas", label: "Mural de Vagas", icon: Briefcase },
+  { href: "/bate-papo", label: "Bate-papo", icon: MessageCircle },
   { href: "/perfil", label: "Meu Perfil", icon: User },
 ];
 const ADMIN_NAV = [
@@ -28,6 +29,7 @@ const ADMIN_NAV = [
   { href: "/admin/conteudos", label: "Gerenciar conteúdos", icon: BookOpen },
   { href: "/vagas", label: "Curadoria de Vagas", icon: Briefcase },
   { href: "/mentoria", label: "Mentoras e Eventos", icon: Users },
+  { href: "/bate-papo", label: "Moderação do bate-papo", icon: MessageCircle },
 ];
 
 /** Incentivo compacto no rodapé da sidebar enquanto o perfil profissional está incompleto. */
