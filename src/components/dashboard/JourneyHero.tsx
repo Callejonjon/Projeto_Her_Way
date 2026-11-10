@@ -1,11 +1,9 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import { ArrowRight, Check, ChevronDown, ChevronRight, Star, Trophy } from "lucide-react";
+import { ArrowRight, ChevronRight, Star, Trophy } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { LEVEL_NAMES, levelProgress, TRACK_NAMES } from "@/lib/engine";
 import { STAGES } from "@/components/JourneyStepper";
-import type { Track } from "@/lib/types";
 
 const STAGE_COPY: Record<number, string> = {
   1: "Faça seu diagnóstico para descobrirmos juntas o melhor caminho para a sua carreira no mercado financeiro.",
@@ -14,48 +12,13 @@ const STAGE_COPY: Record<number, string> = {
   4: "Prepare-se para os processos seletivos com currículo, LinkedIn, cases e simulações de entrevista.",
   5: "Você está pronta para as oportunidades: explore as vagas e planeje o seu próximo ciclo.",
 };
-const TRACK_DESC: Record<Track, string> = { A: "Trilha A · Universitárias", B: "Trilha B · Transição de carreira" };
-
-/** Seletor de jornada (título do hero com chevron). */
-function TrackPicker() {
-  const { profile, updateProfile } = useStore();
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [open]);
-
+/** A jornada exibida vem do diagnóstico; a alteração é feita apenas em Meu Perfil. */
+function TrackTitle() {
+  const { profile } = useStore();
   const track = profile.track_type;
-  if (!track) return <h1 className="mt-2 text-[40px] font-extrabold leading-[1.05] tracking-tight text-navy-950 sm:text-[52px]">Sua jornada</h1>;
-
-  return (
-    <div ref={ref} className="relative mt-2">
-      <button onClick={() => setOpen((o) => !o)} aria-haspopup="listbox" aria-expanded={open} aria-label={`Jornada ${TRACK_NAMES[track]}. Trocar jornada`}
-        className="group flex items-center gap-3 text-left">
-        <h1 className="text-[40px] font-extrabold leading-[1.05] tracking-tight text-navy-950 sm:text-[52px]">{TRACK_NAMES[track]}</h1>
-        <ChevronDown size={30} strokeWidth={2.2} className={`mt-2 text-navy-950 transition group-hover:text-pink-500 ${open ? "rotate-180" : ""}`} />
-      </button>
-      {open && (
-        <ul role="listbox" className="absolute left-0 z-30 mt-2 w-72 animate-fade-in rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
-          {(["A", "B"] as const).map((t) => (
-            <li key={t}>
-              <button role="option" aria-selected={t === track} onClick={() => { if (t !== track) updateProfile({ track_type: t }); setOpen(false); }}
-                className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left hover:bg-pink-50">
-                <span>
-                  <span className="block text-sm font-bold text-navy-950">{TRACK_NAMES[t]}</span>
-                  <span className="block text-xs text-slate-500">{TRACK_DESC[t]}</span>
-                </span>
-                {t === track && <Check size={16} className="text-pink-500" />}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
+  return <h1 className="mt-2 text-[40px] font-extrabold leading-[1.05] tracking-tight text-navy-950 sm:text-[52px]">
+    {track ? TRACK_NAMES[track] : "Sua jornada"}
+  </h1>;
 }
 
 /** Card escuro de nível/XP com incentivo de completar o perfil. */
@@ -111,7 +74,7 @@ export default function JourneyHero() {
     <section className="relative overflow-hidden rounded-3xl border border-slate-200/70 bg-[linear-gradient(90deg,#FFFFFF_0%,#FFFFFF_38%,#FCEFF6_58%,#F3E3F1_80%,#E9DDF3_100%)] shadow-soft">
       <div className="relative grid gap-6 p-6 sm:p-8 xl:grid-cols-[minmax(0,1.3fr)_minmax(180px,0.7fr)_330px] xl:items-center xl:py-7 xl:pr-6">
         <div className="max-w-[520px]">
-          <TrackPicker />
+          <TrackTitle />
           <p className="mt-3 text-lg font-semibold text-navy-950 sm:text-xl">
             Você está na <span className="text-pink-500">Etapa {journey.currentStage}: {stage.title}</span>
           </p>
