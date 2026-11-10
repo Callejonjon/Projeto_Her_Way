@@ -57,7 +57,7 @@ interface Store extends PersistedState {
 }
 
 const KEY = "herway-state-v1";
-const emptyProfile: Profile = { id: "", name: "", email: "", track_type: null, level: 1, xp: 0, interests: [], skills: [], bio: "", avatar_url: null, linkedin_url: "", cv_url: null, goal: "" };
+const emptyProfile: Profile = { id: "", name: "", email: "", track_type: null, level: 1, xp: 0, interests: [], skills: [], bio: "", avatar_url: null, profile_photo_path: null, linkedin_url: "", cv_url: null, goal: "" };
 
 const initial: PersistedState = {
   profile: DEMO_PROFILE,
@@ -130,6 +130,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         interests: p?.interests ?? [], skills: p?.skills ?? [],
         bio: p?.bio ?? "", linkedin_url: p?.linkedin_url ?? "",
         cv_url: p?.cv_url ?? null, avatar_url: p?.avatar_url ?? null,
+        profile_photo_path: p?.profile_photo_path ?? null,
       };
       setState({
         ...initial, profile, onboarded: Boolean(profile.track_type),
@@ -163,10 +164,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       supabase.from("mentorships").select("*").eq("active",true).then(({data,error}) => {
         if(error){console.warn("[mentorships]",error.message);return;}
         const blockedDemoNames=new Set(["Carla Menezes","Juliana Prado","Renata Okada","Fernanda Lima"]);
-        setRemoteMentors((data??[]).filter(m=>!blockedDemoNames.has(m.mentor_name)).map(m=>({
+        setRemoteMentors((data??[]).filter(m=>!blockedDemoNames.has(m.mentor_name)&&m.photo_path).map(m=>({
           id:m.id, mentor_name:m.mentor_name, mentor_role:m.mentor_role,
           specialty:m.specialty, bio:m.bio??"", match_tags:m.match_tags??[],
-          tracks:["A","B"], goals:[], initials:m.mentor_name.split(/\s+/).slice(0,2).map((x:string)=>x[0]).join("").toUpperCase(),
+          tracks:["A","B"], goals:[], photo_url:m.photo_url??undefined, initials:m.mentor_name.split(/\s+/).slice(0,2).map((x:string)=>x[0]).join("").toUpperCase(),
         } as Mentor)));
       });
       supabase.from("events").select("*").gte("starts_at",new Date().toISOString()).order("starts_at").then(({data,error})=>{
@@ -298,7 +299,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const { data: p } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
-      if (p) setState((s) => ({ ...s, profile: { ...s.profile, name: p.name, track_type: p.track_type, xp: p.xp, level: p.level, interests: p.interests, skills: p.skills, bio: p.bio ?? "", linkedin_url: p.linkedin_url ?? "", cv_url: p.cv_url ?? null }, onboarded: !!p.track_type }));
+      if (p) setState((s) => ({ ...s, profile: { ...s.profile, name: p.name, track_type: p.track_type, xp: p.xp, level: p.level, interests: p.interests, skills: p.skills, bio: p.bio ?? "", linkedin_url: p.linkedin_url ?? "", cv_url: p.cv_url ?? null, avatar_url: p.avatar_url ?? null, profile_photo_path: p.profile_photo_path ?? null }, onboarded: !!p.track_type }));
     }
   };
 
