@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 /* =============================================================================
    /api/jobs/sync — Automação híbrida de vagas
-   1. Busca vagas em APIs abertas (Remotive) e feeds RSS configuráveis
+   1. Busca vagas via APIs abertas Himalayas e Jobicy
    2. Filtra por relevância (somente finanças; vagas de dados/tecnologia são descartadas) e PADRONIZA no formato da tabela `jobs`
    3. Faz upsert no Supabase (dedupe por source_url) quando a SERVICE_ROLE_KEY existe
    Disparo: Vercel Cron (GET diário, vercel.json) ou botão "Sincronizar feeds" (POST).
@@ -16,11 +16,9 @@ export const dynamic = "force-dynamic";
    ============================================================================= */
 
 const API_SOURCES = [
-  { name: "remotive", url: "https://remotive.com/api/remote-jobs?category=finance&limit=25" },
-];
-const RSS_FEEDS: { name: string; url: string }[] = [
-  // Adicione feeds RSS de vagas aqui (ex.: portais de vagas, páginas de carreira com RSS)
-  { name: "rss:weworkremotely-finance", url: "https://weworkremotely.com/categories/remote-finance-and-legal-jobs.rss" },
+  {name:"himalayas",url:"https://himalayas.app/jobs/api/search?country=BR&q=finance&sort=recent"},
+  {name:"himalayas",url:"https://himalayas.app/jobs/api/search?country=BR&q=investment&sort=recent"},
+  {name:"jobicy",url:"https://jobicy.com/api/jobs?count=50&industry=finance"},
 ];
 
 const RELEVANT = /(financ|finance|invest|asset|credit|crédito|credito|risk|risco|bank|banc|treasury|tesour|research|equity|analyst|analista|accounting|contab|fp&a|controller|quant)/i;
@@ -61,63 +59,77 @@ function normalize(raw: { title: string; company: string; description: string; u
   };
 }
 
+
 async function fromApis(): Promise<Job[]> {
   const out: Job[] = [];
-  for (const src of API_SOURCES) {
-    try {
-      const res = await fetch(src.url, { signal: AbortSignal.timeout(8000), headers: { "User-Agent": "HerWay-JobSync/1.0" } });
-      if (!res.ok) continue;
-      const data = (await res.json()) as { jobs?: { title: string; company_name: string; description: string; url: string; candidate_required_location?: string; publication_date?: string }[] };
-      for (const j of data.jobs ?? []) {
-        out.push(normalize({ title: j.title, company: j.company_name, description: j.description, url: j.url, location: j.candidate_required_location, date: j.publication_date }, src.name));
+  for(const src of API_SOURCES){
+    try{
+      const headers: Record<string,string> = {"User-Agent":"HerWay-JobSync/1.0"};
+      if(src.name==="himalayas" && process.env.HIMALAYAS_API_KEY)
+        headers.Authorization="Bearer "+process.env.HIMALAYAS_API_KEY;
+      const response=await fetch(src.url,{headers,signal:AbortSignal.timeout(9500),cache:"no-store"});
+      if(!response.ok){ console.warn("[jobs/sync]",src.name,response.status); continue; }
+      const data=await response.json() as {jobs?:Record<string,unknown>[]};
+      for(const j of data.jobs??[]){
+        let raw: {title:string;company:string;description:string;url:string;location?:string;date?:string};
+        if(src.name==="himalayas"){
+          const expiry=typeof j.expiryDate==="number"?j.expiryDate:0;
+          if(expiry && expiry*1000<Date.now())continue;
+          const restrictions=Array.isArray(j.locationRestrictions)?j.locationRestrictions:[];
+          const codes=restrictions.map((v: {alpha2?:string})=>String(v.alpha2??""));
+          if(codes.length&&!codes.includes("BR"))continue;
+          raw={
+            title:String(j.title??""),company:String(j.companyName??""),
+            description:String(j.description??j.excerpt??""),
+            url:String(j.applicationLink??""),
+            location:codes.length?"Brasil · remoto":"Remoto internacional (verificar elegibilidade)",
+            date:typeof j.pubDate==="number"?new Date(j.pubDate*1000).toISOString():undefined,
+          };
+        }else{
+          raw={
+            title:String(j.jobTitle??""),company:String(j.companyName??""),
+            description:String(j.jobDescription??j.jobExcerpt??""),
+            url:String(j.url??""),
+            location:String(j.jobGeo??"Remoto"),
+            date:typeof j.pubDate==="string"?j.pubDate:undefined,
+          };
+        }
+        if(raw.title && raw.company && raw.url.startsWith("https://")) out.push(normalize(raw,src.name));
       }
-    } catch (e) { console.warn(`[jobs/sync] ${src.url} falhou`, (e as Error).message); }
+    }catch(err){console.warn("[jobs/sync]",src.name,(err as Error).message)}
   }
   return out;
 }
 
-async function fromRss(): Promise<Job[]> {
-  const out: Job[] = [];
-  for (const feed of RSS_FEEDS) {
-    try {
-      const res = await fetch(feed.url, { signal: AbortSignal.timeout(8000), headers: { "User-Agent": "HerWay-JobSync/1.0" } });
-      if (!res.ok) continue;
-      const xml = await res.text();
-      for (const item of xml.match(/<item>[\s\S]*?<\/item>/g) ?? []) {
-        const tag = (t: string) => stripHtml(item.match(new RegExp(`<${t}[^>]*>([\\s\\S]*?)</${t}>`))?.[1] ?? "");
-        const rawTitle = tag("title");
-        const [company, ...rest] = rawTitle.includes(":") ? rawTitle.split(":") : ["", rawTitle];
-        out.push(normalize({ title: rest.join(":") || rawTitle, company, description: tag("description"), url: tag("link"), location: tag("region"), date: tag("pubDate") }, feed.name));
-      }
-    } catch (e) { console.warn(`[jobs/sync] RSS ${feed.url} falhou`, (e as Error).message); }
-  }
-  return out;
-}
 
 async function handler(req: Request) {
-  const secret = process.env.CRON_SECRET;
-  const authorized = Boolean(secret) && req.headers.get("authorization") === `Bearer ${secret}`;
-  if (!authorized) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-
-  const all = [...(await fromApis()), ...(await fromRss())];
-  const unique = [...new Map(all.filter((j) => j.source_url && RELEVANT.test(`${j.title} ${j.description}`) && isFinanceJob(j)).map((j) => [j.source_url, j])).values()];
-
-  let saved = 0;
-  const db = createServiceClient();
-  if (db && authorized && unique.length) {
-    const rows = unique.map(({ id: _id, ...r }) => r);
-    const { error, count } = await db.from("jobs").upsert(rows, { onConflict: "source_url", count: "exact" });
-    if (error) console.error("[jobs/sync] upsert", error.message);
-    else saved = count ?? rows.length;
+  const db=createServiceClient();
+  if(!db)return NextResponse.json({error:"Configure SUPABASE_SERVICE_ROLE_KEY no servidor."},{status:503});
+  const authorization=req.headers.get("authorization")??"";
+  const secret=process.env.CRON_SECRET;
+  const byCron=req.method==="GET" && !!secret && authorization==="Bearer "+secret;
+  let byAdmin=false;
+  if(req.method==="POST" && authorization.startsWith("Bearer ")){
+    const token=authorization.slice(7);
+    const {data:{user},error}=await db.auth.getUser(token);
+    if(user&&!error){
+      const result=await db.from("profiles").select("is_admin").eq("id",user.id).maybeSingle();
+      byAdmin=result.data?.is_admin===true;
+    }
   }
-
-  return NextResponse.json({
-    fetched: unique.length,
-    saved,
-    persisted: saved > 0,
-    sources: [...new Set(unique.map((j) => j.source))],
-    jobs: unique.slice(0, 30),
-  });
+  if(!byCron&&!byAdmin)return NextResponse.json({error:"Acesso restrito à administração."},{status:403});
+  const all=await fromApis();
+  const unique=[...new Map(all.filter(j=>
+    j.source_url && RELEVANT.test(j.title+" "+j.description) && isFinanceJob(j)
+  ).map(j=>[j.source_url,j] as const)).values()];
+  if(!unique.length)return NextResponse.json({fetched:0,saved:0,sources:[],jobs:[]});
+  const rows=unique.map(({id:_id,...rest})=>rest);
+  const {error,count}=await db.from("jobs").upsert(rows,{onConflict:"source_url",count:"exact"});
+  if(error){
+    console.error("[jobs/sync] upsert",error.message);
+    return NextResponse.json({error:"Falha ao salvar vagas no Supabase.",fetched:unique.length,saved:0},{status:502});
+  }
+  return NextResponse.json({fetched:unique.length,saved:count??rows.length,sources:[...new Set(unique.map(j=>j.source))],jobs:unique.slice(0,30)});
 }
 
 export const GET = handler;
