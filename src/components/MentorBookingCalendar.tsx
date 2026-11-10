@@ -21,7 +21,7 @@ function dayKey(iso:string) {
 function futureDays(n=21):{key:string;day:string;dayOfMonth:string}[]{
  const now=new Date();
  // Noon UTC keeps day selection stable across Brazil timezone offset.
- const today=dayKey(now);
+ const today=dayKey(now.toISOString());
  return Array.from({length:n},(_,i)=>{
   const noon=new Date(today+"T12:00:00Z");noon.setUTCDate(noon.getUTCDate()+i);
   const key=noon.toISOString().slice(0,10), weekday=noon.getUTCDay();
