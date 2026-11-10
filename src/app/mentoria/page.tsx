@@ -2,7 +2,6 @@
 import { useMemo, useState } from "react";
 import { CalendarDays, CheckCircle2, ExternalLink, Info, MapPin, Send, Sparkles } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { EVENTS, MENTORS } from "@/lib/mock-data";
 import { mentorAffinity } from "@/lib/engine";
 import { MatchBadge, PageHeader, ProgressBar } from "@/components/ui";
 import type { EventItem } from "@/lib/types";
@@ -11,14 +10,14 @@ import { fmtDay, fmtMonth, fmtTime } from "@/lib/format";
 const KINDS: (EventItem["kind"] | "Todos")[] = ["Todos", "Networking", "Bate-papo", "Liga Universitária", "Empresa Parceira"];
 
 export default function Mentoria() {
-  const { profile, skills, mentorRequests, requestMentor, journey } = useStore();
+  const { profile, skills, mentorRequests, requestMentor, journey, mentors, events: upcomingEvents } = useStore();
   const [kind, setKind] = useState<(typeof KINDS)[number]>("Todos");
   const [showRule, setShowRule] = useState(false);
 
   const ranked = useMemo(
-    () => MENTORS.map((m) => mentorAffinity(profile, m, skills)).sort((a, b) => b.score - a.score),
-    [profile, skills]);
-  const events = EVENTS.filter((e) => (kind === "Todos" || e.kind === kind));
+    () => mentors.map((m) => mentorAffinity(profile, m, skills)).sort((a, b) => b.score - a.score),
+    [profile, skills, mentors]);
+  const events = upcomingEvents.filter((e) => (kind === "Todos" || e.kind === kind));
 
   return (
     <>
@@ -47,6 +46,7 @@ export default function Mentoria() {
           </div>
         )}
 
+        {ranked.length === 0 && <p className="card mb-4 p-6 text-sm text-slate-600">Ainda não há mentoras verificadas disponíveis. Em breve divulgaremos as profissionais participantes.</p>}
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {ranked.map(({ mentor, score, reasons }, i) => {
             const requested = mentorRequests.includes(mentor.id);
@@ -91,6 +91,7 @@ export default function Mentoria() {
             ))}
           </div>
         </div>
+        {events.length === 0 && <p className="card mb-4 p-6 text-sm text-slate-600">Ainda não existem eventos futuros confirmados.</p>}
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {events.map((e) => {
             const recommended = profile.track_type ? e.tracks.includes(profile.track_type) : true;
