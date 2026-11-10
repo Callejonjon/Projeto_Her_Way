@@ -31,6 +31,23 @@ export async function saveProfile(p: Profile, extra?: Record<string, unknown>) {
   log("profiles", error);
 }
 
+export async function uploadProfilePhoto(file: File): Promise<{url:string;xp:number}> {
+  const id=await uid();
+  if(!supabase||!id)throw new Error("Faça login para atualizar sua foto.");
+  const allowed=["image/jpeg","image/png","image/webp"];
+  if(!allowed.includes(file.type)||file.size>2*1024*1024||file.size<1000)
+    throw new Error("Escolha uma foto JPG, PNG ou WebP de até 2 MB.");
+  const extension=file.type==="image/png"?"png":file.type==="image/webp"?"webp":"jpg";
+  const path=`students/${id}/${crypto.randomUUID()}.${extension}`;
+  const upload=await supabase.storage.from("profile-photos").upload(path,file,{contentType:file.type,upsert:false});
+  if(upload.error)throw new Error("Não foi possível enviar a imagem: "+upload.error.message);
+  const result=await supabase.rpc("profile_register_photo",{p_storage_path:path});
+  if(result.error)throw new Error("A imagem foi enviada, mas não registrada: "+result.error.message);
+  const data=Array.isArray(result.data)?result.data[0]:result.data;
+  if(!data?.photo_url)throw new Error("O servidor não confirmou o registro da foto.");
+  return {url:String(data.photo_url),xp:Number(data.xp_awarded??0)};
+}
+
 export async function uploadCv(file: File): Promise<string> {
   const id = await uid();
   if (isDemoMode || !supabase || !id) return file.name; // demo: guarda só o nome
