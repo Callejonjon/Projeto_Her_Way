@@ -21,6 +21,7 @@ export interface Profile {
   skills: string[];
   bio: string;
   avatar_url: string | null;
+  profile_photo_path?: string | null;
   linkedin_url: string;
   cv_url: string | null;
   goal: string;
