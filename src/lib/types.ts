@@ -50,6 +50,8 @@ export interface Module {
   skillsGranted: string[]; // usado na % de compatibilidade das vagas
   content: ContentSlot[];
   quiz: QuizQuestion[];
+  slides?: { order: number; title: string; body: string }[];
+  reviewRequired?: boolean;
 }
 
 export interface ModuleProgress {
