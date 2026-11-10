@@ -32,6 +32,7 @@ interface Store extends PersistedState {
   refreshProfile: () => Promise<void>;
   isAdmin: boolean;
   modules: Module[];
+  catalogModules: Module[];
   jobs: Job[];
   mentors: Mentor[];
   events: EventItem[];
@@ -172,23 +173,37 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if(error){console.warn("[events]",error.message);return;}
         setRemoteEvents((data??[]) as EventItem[]);
       });
-      supabase.from("learning_modules")
-        .select("*").order("stage").order("sort_order")
-        .then(({ data, error }) => {
-          if (error) { console.warn("[learning_modules]", error.message); setRemoteModules([]); return; }
-          setRemoteModules((data ?? []).map((row) => ({
-            id: row.id, title: row.title, stage: row.stage, track: row.track,
-            description: (row.slides?.[0]?.body ?? "").slice(0, 185) || "Material produzido pela equipe Her Way.",
-            durationMin: row.duration_min ?? 30,
-            skillsGranted: row.skills_granted ?? [], content: [],
-            quiz: row.quiz ?? [], slides: row.slides ?? [],
-            reviewRequired: Boolean(row.review_required),
-          } as Module)));
-        });
+      // Public catalog: all published A, B, and shared courses for every account.
+      // RLS hides unpublished courses from students.
+      const client = supabase;
+      void Promise.all([
+        client.from("learning_modules").select("*").order("stage").order("sort_order"),
+        client.from("learning_assets").select("*"),
+      ]).then(([catalog, assetsResult]) => {
+        if (catalog.error) {
+          console.warn("[learning_modules]",catalog.error.message);
+          setRemoteModules([]);
+          return;
+        }
+        if (assetsResult.error) console.warn("[learning_assets]",assetsResult.error.message);
+        const assets = assetsResult.data ?? [];
+        setRemoteModules((catalog.data ?? []).map(row => ({
+          id:row.id,title:row.title,stage:row.stage,track:row.track,
+          description:(row.slides?.[0]?.body ?? "").slice(0,185) || "Material produzido pela equipe Her Way.",
+          durationMin:row.duration_min ?? 30,skillsGranted:row.skills_granted ?? [],
+          content:[],quiz:row.quiz ?? [],slides:row.slides ?? [],
+          reviewRequired:Boolean(row.review_required),
+          assets:assets.filter(a=>a.module_id===row.id),
+          videoSummary:row.video_summary ?? null,videoTranscript:row.video_transcript ?? null,
+          videoStatus:row.video_status ?? "not_started",
+        } as Module)));
+      });
     }
   }, [authUser]);
 
-  const modules = useMemo(() => modulesForTrack(isDemoMode ? MODULES : (remoteModules ?? []), state.profile.track_type), [state.profile.track_type, remoteModules]);
+  const catalogModules = useMemo(() => isDemoMode ? MODULES : (remoteModules ?? []), [remoteModules]);
+  // Only the gamified journey uses the chosen track; course browsing uses catalogModules.
+  const modules = useMemo(() => modulesForTrack(catalogModules, state.profile.track_type), [catalogModules, state.profile.track_type]);
   const journey = useMemo(
     () => computeJourney(modules, state.progress, state.onboarded, state.mentorRequests.length > 0),
     [modules, state.progress, state.onboarded, state.mentorRequests.length]);
@@ -289,7 +304,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const value: Store = {
     ...state, hydrated, isDemo: isDemoMode, authUser, authLoading, isAdmin, refreshProfile: handleRefresh,
-    modules, jobs, mentors: isDemoMode ? [] : remoteMentors, events: isDemoMode ? [] : remoteEvents, journey, skills, celebration,
+    modules, catalogModules, jobs, mentors: isDemoMode ? [] : remoteMentors, events: isDemoMode ? [] : remoteEvents, journey, skills, celebration,
     setView: (view) => setState((s) => ({ ...s, view: !isDemoMode && !isAdmin ? "aluna" : view })),
     updateProfile: (p) => setState((s) => {
       const profile = { ...s.profile, ...p };
