@@ -25,7 +25,7 @@ const SKILLS:[RegExp,string][]=[
 const clean=(val:unknown)=>String(val??"").replace(/<[^>]*>/g," ").replace(/\s+/g," ").trim();
 const safeDate=(raw:unknown)=>{
   if(!raw)return new Date().toISOString();
-  const date=new Date(String(raw));
+  const date=typeof raw==="number" ? new Date(raw) : new Date(String(raw));
   return Number.isNaN(date.getTime())?new Date().toISOString():date.toISOString();
 };
 const asHttps=(raw:unknown):string|null=>{
@@ -103,7 +103,7 @@ async function fromEmpregare():Promise<Job[]>{
           location:cities||"Brasil",
           modality:j.trabalhoRemotoTexto??j.trabalhoRemoto,
           level:j.nivel,
-          date:numberDate(j.timestamp)||j.data||j.dataCadastro,
+          date:j.dataCadastro||j.data||numberDate(j.timestamp),
           source:"empregare",
         });
         if(result)out.push(result);
@@ -152,13 +152,48 @@ async function fromJooble():Promise<Job[]>{
   return out;
 }
 
+// Public employer-specific boards with independently verified Brazilian vacancy pages.
+const LEVER_BOARDS=[
+  {slug:"zippi",name:"Zippi"},
+  {slug:"tryjeeves",name:"Jeeves"},
+  {slug:"caliza-financial-technologies",name:"Caliza"},
+  {slug:"payjoy",name:"PayJoy"},
+];
+async function fromLeverBrazil():Promise<Job[]>{
+  const collected:Job[]=[];
+  for(const board of LEVER_BOARDS){
+    try{
+      const data=await fetchJSON("https://api.lever.co/v0/postings/"+board.slug+"?mode=json&limit=150");
+      if(!Array.isArray(data))continue;
+      for(const item of data){
+        const j=item as Record<string,unknown>;
+        const cats=(j.categories??{}) as Record<string,unknown>;
+        const location=clean(cats.location);
+        const country=clean(j.country).toUpperCase();
+        // Avoid publishing vacancies reserved for other regions.
+        const inBrazil=country==="BR" || /brasil|brazil|s[aã]o paulo|sao paulo|rio de janeiro|belo horizonte|curitiba|recife|porto alegre|campinas/i.test(location);
+        if(!inBrazil)continue;
+        const result=normalizeJob({
+          title:j.text,company:board.name,description:j.descriptionPlain??j.openingPlain,
+          url:j.applyUrl??j.hostedUrl,location,
+          modality:j.workplaceType,
+          date:typeof j.createdAt==="number"?j.createdAt:undefined,
+          source:"lever",
+        });
+        if(result)collected.push(result);
+      }
+    }catch(e){console.warn("[jobs/sync] Lever",board.slug,(e as Error).message);}
+  }
+  return collected;
+}
+
 export async function fromBrazilianJobApis():Promise<Job[]>{
   // Avoid parallel bulk polling of the same public provider; separate sources can run in parallel.
-  const results=await Promise.allSettled([fromEmpregare(),fromAdzuna(),fromJooble()]);
+  const results=await Promise.allSettled([fromEmpregare(),fromLeverBrazil(),fromAdzuna(),fromJooble()]);
   return results.flatMap(r=>r.status==="fulfilled"?r.value:[]);
 }
 
 export function enabledBrazilianJobSources():string[]{
-  return ["Empregare (pública)",...(process.env.ADZUNA_APP_ID&&process.env.ADZUNA_APP_KEY?["Adzuna BR"]:[]),
+  return ["Empregare (pública)","Lever (carreiras brasileiras)",...(process.env.ADZUNA_APP_ID&&process.env.ADZUNA_APP_KEY?["Adzuna BR"]:[]),
     ...(process.env.JOOBLE_BR_API_KEY?["Jooble BR"]:[])];
 }
