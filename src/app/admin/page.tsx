@@ -61,15 +61,15 @@ function LineChart({ data }: { data: { month: string; A: number; B: number }[] }
 }
 
 export default function Admin() {
-  const { view, setView } = useStore();
+  const { view, setView, isAdmin } = useStore();
 
-  if (view !== "admin") {
+  if (!isAdmin || view !== "admin") {
     return (
       <div className="card mx-auto mt-10 max-w-md p-8 text-center">
         <Lock className="mx-auto text-pink-500" size={40} />
         <h1 className="mt-4 text-xl font-extrabold">Área restrita</h1>
         <p className="mt-2 text-sm text-slate-600">O Painel de Impacto é exclusivo para a gestão do programa e banca avaliadora. Com Supabase ativo, o acesso é validado pela flag <code>is_admin</code>.</p>
-        <button className="btn-primary mt-6" onClick={() => setView("admin")}>Entrar como admin (demo)</button>
+        {isAdmin && <button className="btn-primary mt-6" onClick={() => setView("admin")}>Entrar na administração</button>}
       </div>
     );
   }
