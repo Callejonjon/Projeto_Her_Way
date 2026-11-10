@@ -5,9 +5,13 @@ import type { MentorMatch } from "@/lib/engine";
 import { Avatar, CardHeader } from "./shared";
 
 /** Card "Mentora recomendada": melhor afinidade calculada pelo motor de match. */
-export default function MentorCard({ match }: { match: MentorMatch }) {
+export default function MentorCard({ match }: { match: MentorMatch | undefined }) {
+  if (!match) return <section className="panel flex flex-col p-6"><CardHeader icon={Users} title="Mentora recomendada" href="/mentoria" /><p className="mt-5 text-sm text-slate-500">Ainda não temos mentoras verificadas disponíveis para recomendar.</p></section>;
+  return <MentorDetail match={match}/>;
+}
+function MentorDetail({match}:{match: MentorMatch}) {
   const { mentorRequests, requestMentor } = useStore();
-  const { mentor, score } = match;
+  const {mentor,score}=match;
   const [role, company] = mentor.mentor_role.split(" · ");
   const requested = mentorRequests.includes(mentor.id);
 
