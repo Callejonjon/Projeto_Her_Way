@@ -66,7 +66,7 @@ export default function Vagas() {
       if (!res.ok) throw new Error(data.error || "Não foi possível sincronizar as APIs.");
       const stored = await repo.fetchJobs();
       if (stored?.length) mergeJobs(stored);
-      setSync({loading:false,msg:`${data.fetched ?? 0} vagas relevantes encontradas · ${data.saved ?? 0} novas/atualizadas no Supabase · fontes: ${data.sources?.join(", ") || "nenhuma"}`});
+      setSync({loading:false,msg:`${data.fetched ?? 0} vagas relevantes encontradas · ${data.saved ?? 0} gravadas/atualizadas no Supabase · fontes com vagas: ${data.sources?.join(", ") || "nenhuma"} · conectores brasileiros: ${data.enabledBrazilianSources?.join(", ") || "não informados"}`});
     } catch (e) {
       setSync({ loading: false, msg: e instanceof Error ? e.message : "Não foi possível sincronizar agora." });
     }
