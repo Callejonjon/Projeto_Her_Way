@@ -1,7 +1,8 @@
 "use client";
 import { useMemo, useState } from "react";
 import MentorBookingCalendar from "@/components/MentorBookingCalendar";
-import { CalendarDays, CheckCircle2, ExternalLink, Info, MapPin, Send, Sparkles } from "lucide-react";
+import MentorAdminRegister from "@/components/MentorAdminRegister";
+import { CalendarDays, CheckCircle2, ExternalLink, Info, MapPin, Sparkles } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { mentorAffinity } from "@/lib/engine";
 import { MatchBadge, PageHeader, ProgressBar } from "@/components/ui";
@@ -11,7 +12,7 @@ import { fmtDay, fmtMonth, fmtTime } from "@/lib/format";
 const KINDS: (EventItem["kind"] | "Todos")[] = ["Todos", "Networking", "Bate-papo", "Liga Universitária", "Empresa Parceira"];
 
 export default function Mentoria() {
-  const { profile, skills, journey, mentors, events: upcomingEvents } = useStore();
+  const { profile, skills, journey, mentors, events: upcomingEvents, isAdmin } = useStore();
   const [kind, setKind] = useState<(typeof KINDS)[number]>("Todos");
   const [showRule, setShowRule] = useState(false);
   const [calendarMentorId,setCalendarMentorId] = useState<string|null>(null);
@@ -29,7 +30,7 @@ export default function Mentoria() {
       {!journey.stagesDone[2] && (
         <p className="mb-6 flex items-start gap-2 rounded-xl bg-solar-400/15 p-3 text-sm text-slate-700">
           <Sparkles size={16} className="mt-0.5 shrink-0 text-amber-600" />
-          Você já pode solicitar uma mentora! A Etapa 3 é concluída quando você termina a formação básica e tem uma mentoria solicitada.
+          Você já pode consultar as agendas das mentoras aprovadas. Para reservar, complete sua foto no perfil; os horários disponíveis são reais.
         </p>
       )}
 
@@ -55,7 +56,10 @@ export default function Mentoria() {
               <article key={mentor.id} className={`card flex flex-col p-5 ${i === 0 ? "ring-2 ring-pink-400" : ""}`}>
                 {i === 0 && <span className="chip mb-3 w-fit bg-pink-500 text-white">★ Melhor match</span>}
                 <div className="flex items-center gap-3">
-                  <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-gradient-to-br from-pink-500 to-pink-600 text-lg font-bold text-white">{mentor.initials}</span>
+                  {mentor.photo_url
+                  // eslint-disable-next-line @next/next/no-img-element
+                  ? <img src={mentor.photo_url} alt={`Foto de ${mentor.mentor_name}`} className="h-14 w-14 shrink-0 rounded-full border-2 border-pink-100 object-cover"/>
+                  : <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-gradient-to-br from-pink-500 to-pink-600 text-lg font-bold text-white">{mentor.initials}</span>}
                   <div className="min-w-0">
                     <h3 className="font-bold">{mentor.mentor_name}</h3>
                     <p className="text-xs text-slate-500">{mentor.mentor_role}</p>
@@ -81,6 +85,8 @@ export default function Mentoria() {
           })}
         </div>
       </section>
+
+      {isAdmin && <MentorAdminRegister/>}
 
       {calendarMentorId && mentors.find(m=>m.id===calendarMentorId) && <MentorBookingCalendar mentor={mentors.find(m=>m.id===calendarMentorId)!} onClose={()=>setCalendarMentorId(null)}/>}
 
