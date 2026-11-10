@@ -12,7 +12,7 @@ export default function Callback() {
     const hash = new URLSearchParams(window.location.hash.slice(1));
     const recovery = search.get("type") === "recovery" || hash.get("type") === "recovery" || search.get("next") === "/auth/reset";
     const callbackError = search.get("error_description") || hash.get("error_description");
-    if (callbackError) { setError(callbackError.replace(/\\+/g, " ")); return; }
+    if (callbackError) { setError(callbackError.replace(/\+/g, " ")); return; }
     async function finish() {
       // Supabase JS processes OAuth/confirmation fragments on startup.
       const { data, error } = await supabase!.auth.getSession();
