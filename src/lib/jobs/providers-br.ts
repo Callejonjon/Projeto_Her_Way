@@ -101,7 +101,7 @@ async function fromEmpregare():Promise<Job[]>{
         const result=normalizeJob({
           title:j.titulo,company:j.empresa,description:j.chamada,url:link,
           location:cities||"Brasil",
-          modality:j.trabalhoRemotoTexto??j.trabalhoRemoto,
+          modality:j.trabalhoRemotoTexto||(j.trabalhoRemoto===true?"Remoto":""),
           level:j.nivel,
           date:j.dataCadastro||j.data||numberDate(j.timestamp),
           source:"empregare",
@@ -136,7 +136,7 @@ async function fromJooble():Promise<Job[]>{
   const key=process.env.JOOBLE_BR_API_KEY;
   if(!key)return [];
   const out:Job[]=[];
-  for(const term of ["financeiro","investimentos","estágio financeiro"]){
+  for(const term of ["financeiro","estágio financeiro"]){
     try{
       const json=await fetchJSON("https://br.jooble.org/api/"+encodeURIComponent(key),{
         method:"POST",headers:{"Content-Type":"application/json"},
