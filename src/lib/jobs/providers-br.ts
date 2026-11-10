@@ -9,7 +9,7 @@ import type { Job, Area, JobLevel, Modality } from "@/lib/types";
  * No candidate data or user credentials are sent to these services.
  */
 const SEARCHES=["estágio financeiro","analista financeiro","investimentos","crédito"];
-const RELEVANT_TITLE=/(financ|invest|asset|crédito|credito|risk|risco|bank|banc|tesour|treasury|controlador|contab|auditor|equity|research|valuation|mercado de capitais|planejamento financeiro|fp&a)/i;
+const RELEVANT_TITLE=/(financ|invest|asset|crédito|credito|risk|risco|bank|banc|tesour|treasury|controlador|contab|auditor|equity|research|valuation|underwrit|accountant|contabil|kyc|compliance|finops|precifica|pricing|mercado de capitais|planejamento financeiro|fp&a)/i;
 const EXCLUDE_TITLE=/(desenvolvedor|developer|engenheir.*software|marketing digital|design|vendedor|vendas|corretor de im[oó]veis|motorista|suporte t[eé]cnico)/i;
 const AREAS:[RegExp,Area][]=[
   [/(crédito|credito|risk|risco|loan)/i,"Crédito"],
@@ -50,12 +50,12 @@ function workMode(raw:string):Modality {
 }
 type Raw={
  title:unknown;company:unknown;description?:unknown;url:unknown;location?:unknown;
- date?:unknown;modality?:unknown;level?:unknown;source:string;
+ date?:unknown;modality?:unknown;level?:unknown;source:string;financeDepartment?:boolean;
 };
 function normalizeJob(r:Raw):Job|null {
   const title=clean(r.title),company=clean(r.company);
   const url=asHttps(r.url);
-  if(!url||!title||!company||!RELEVANT_TITLE.test(title)||EXCLUDE_TITLE.test(title))return null;
+  if(!url||!title||!company||(!RELEVANT_TITLE.test(title)&&!r.financeDepartment)||EXCLUDE_TITLE.test(title))return null;
   const description=clean(r.description);
   const location=clean(r.location)||"Localidade não informada";
   const context=title+" "+description;
@@ -178,6 +178,7 @@ async function fromLeverBrazil():Promise<Job[]>{
           url:j.applyUrl??j.hostedUrl,location,
           modality:j.workplaceType,
           date:typeof j.createdAt==="number"?j.createdAt:undefined,
+          financeDepartment:/finance|finops|credit risk|accounting|treasury|investment/i.test(clean(cats.department)+" "+clean(cats.team)),
           source:"lever",
         });
         if(result)collected.push(result);
