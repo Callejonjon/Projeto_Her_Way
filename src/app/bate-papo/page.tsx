@@ -193,6 +193,14 @@ export default function BatePapo(){
           </ul>}
           <p className="text-xs text-slate-500">Não compartilhe informações sensíveis. A Her Way não monitora todas as mensagens em tempo real.</p>
         </section>
+        {blocks.size>0&&<section className="card space-y-3 p-5">
+          <h2 className="flex items-center gap-2 font-bold"><Ban size={18} className="text-pink-500"/> Contas bloqueadas ({blocks.size})</h2>
+          <p className="text-xs text-slate-500">Você não verá mensagens destas contas. É possível desbloqueá-las quando quiser.</p>
+          {[...blocks].map(id=><div key={id} className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 p-2 text-xs">
+            <span className="text-slate-600">Conta …{id.slice(-6)}</span>
+            <button className="font-semibold text-pink-600 hover:underline" onClick={()=>void toggleBlock(id)}>Desbloquear</button>
+          </div>)}
+        </section>}
         {isAdmin&&<section className="card space-y-3 p-5">
           <h2 className="flex items-center gap-2 font-bold"><Flag size={18} className="text-pink-500"/> Denúncias recebidas</h2>
           <p className="text-xs text-slate-500">Somente administradoras visualizam denúncias da comunidade.</p>
