@@ -16,6 +16,10 @@ const MODALITIES: Modality[] = ["Remoto", "Híbrido", "Presencial"];
 
 function sourceLabel(s: string) {
   if (s === "manual") return { label: "Curadoria", cls: "bg-pink-100 text-pink-600" };
+  if (s === "empregare") return { label: "Empregare Brasil", cls: "bg-green-50 text-green-800" };
+  if (s === "lever") return { label: "Carreiras de fintechs", cls: "bg-blue-50 text-blue-800" };
+  if (s === "adzuna") return { label: "Adzuna Brasil", cls: "bg-blue-50 text-blue-800" };
+  if (s === "jooble") return { label: "Jooble Brasil", cls: "bg-blue-50 text-blue-800" };
   if (s === "himalayas") return { label: "Himalayas", cls: "bg-pink-50 text-navy-800" };
   if (s === "jobicy") return { label: "Jobicy", cls: "bg-slate-100 text-slate-600" };
   if (s === "remotive") return { label: "Remotive", cls: "bg-slate-100 text-slate-600" };
@@ -62,7 +66,7 @@ export default function Vagas() {
       if (!res.ok) throw new Error(data.error || "Não foi possível sincronizar as APIs.");
       const stored = await repo.fetchJobs();
       if (stored?.length) mergeJobs(stored);
-      setSync({loading:false,msg:`${data.fetched ?? 0} vagas relevantes encontradas · ${data.saved ?? 0} novas/atualizadas no Supabase · fontes: ${data.sources?.join(", ") || "nenhuma"}`});
+      setSync({loading:false,msg:`${data.fetched ?? 0} vagas relevantes encontradas · ${data.saved ?? 0} gravadas/atualizadas no Supabase · fontes com vagas: ${data.sources?.join(", ") || "nenhuma"} · conectores brasileiros: ${data.enabledBrazilianSources?.join(", ") || "não informados"}`});
     } catch (e) {
       setSync({ loading: false, msg: e instanceof Error ? e.message : "Não foi possível sincronizar agora." });
     }

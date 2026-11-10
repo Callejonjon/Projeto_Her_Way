@@ -2,14 +2,16 @@ import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { createServiceClient } from "@/lib/supabase";
 import { isFinanceJob } from "@/lib/engine";
+import { fromBrazilianJobApis, enabledBrazilianJobSources } from "@/lib/jobs/providers-br";
 import type { Area, Job, JobLevel } from "@/lib/types";
 
 export const runtime = "nodejs";
+export const maxDuration = 60; // Providers run server-side; allow bounded retries and timeouts.
 export const dynamic = "force-dynamic";
 
 /* =============================================================================
    /api/jobs/sync — Automação híbrida de vagas
-   1. Busca vagas via APIs abertas Himalayas e Jobicy
+   1. Busca vagas via Empregare Brasil, Himalayas e Jobicy; suporte a Adzuna BR e Jooble BR com chaves
    2. Filtra por relevância (somente finanças; vagas de dados/tecnologia são descartadas) e PADRONIZA no formato da tabela `jobs`
    3. Faz upsert no Supabase (dedupe por source_url) quando a SERVICE_ROLE_KEY existe
    Disparo: Vercel Cron (GET diário, vercel.json) ou botão "Sincronizar feeds" (POST).
@@ -127,18 +129,19 @@ async function handler(req: Request) {
     db=client;
   }else return NextResponse.json({error:"Acesso restrito à administração."},{status:403});
 
-  const all=await fromApis();
+  const [international,brazilian]=await Promise.all([fromApis(),fromBrazilianJobApis()]);
+  const all=[...brazilian,...international];
   const unique=[...new Map(all.filter(j=>
     j.source_url && RELEVANT.test(j.title+" "+j.description) && isFinanceJob(j)
   ).map(j=>[j.source_url,j] as const)).values()];
-  if(!unique.length)return NextResponse.json({fetched:0,saved:0,sources:[],jobs:[]});
+  if(!unique.length)return NextResponse.json({fetched:0,saved:0,sources:[],jobs:[],enabledBrazilianSources:enabledBrazilianJobSources()});
   const rows=unique.map(({id:_id,...rest})=>rest);
   const {error,count}=await db.from("jobs").upsert(rows,{onConflict:"source_url",count:"exact"});
   if(error){
     console.error("[jobs/sync] upsert",error.message);
     return NextResponse.json({error:"Falha ao salvar vagas no Supabase.",fetched:unique.length,saved:0},{status:502});
   }
-  return NextResponse.json({fetched:unique.length,saved:count??rows.length,sources:[...new Set(unique.map(j=>j.source))],jobs:unique.slice(0,30)});
+  return NextResponse.json({fetched:unique.length,saved:count??rows.length,sources:[...new Set(unique.map(j=>j.source))],enabledBrazilianSources:enabledBrazilianJobSources(),jobs:unique.slice(0,30)});
 }
 
 export const GET = handler;
