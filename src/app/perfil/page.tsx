@@ -11,10 +11,11 @@ import * as repo from "@/lib/repo";
 import { isDemoMode } from "@/lib/supabase";
 import { PageHeader, ProgressBar, TrackBadge } from "@/components/ui";
 import AvatarEditor from "@/components/avatar/AvatarEditor";
+import AvatarAssetAtelier from "@/components/avatar/AvatarAssetAtelier";
 import type { Area } from "@/lib/types";
 
 export default function Perfil() {
-  const { profile, updateProfile, connectLinkedin, journey, progress, mentorRequests, appliedJobs, resetDemo } = useStore();
+  const { profile, updateProfile, connectLinkedin, journey, progress, mentorRequests, appliedJobs, resetDemo, isAdmin } = useStore();
   const [editing, setEditing] = useState(false);
   const [activeTab,setActiveTab] = useState<"perfil"|"avatar">("perfil");
   const [draft, setDraft] = useState({ bio: profile.bio, linkedin_url: profile.linkedin_url });
@@ -178,7 +179,7 @@ export default function Perfil() {
       </div>
 
       </div>
-      {activeTab==="avatar"&&<div id="panel-avatar" role="tabpanel" aria-labelledby="tab-avatar"><AvatarEditor/></div>}
+      {activeTab==="avatar"&&<div id="panel-avatar" role="tabpanel" aria-labelledby="tab-avatar"><AvatarEditor/>{isAdmin&&<AvatarAssetAtelier/>}</div>}
     </>
   );
 }
