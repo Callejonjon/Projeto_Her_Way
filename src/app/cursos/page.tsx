@@ -1,7 +1,7 @@
 "use client";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AlertTriangle, BookOpen, Check, ChevronLeft, ChevronRight, Clock, ExternalLink, FileText, Presentation, PlayCircle, X } from "lucide-react";
+import { AlertTriangle, BookOpen, Check, Clock, ExternalLink, FileText, PlayCircle, X } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { PageHeader } from "@/components/ui";
@@ -19,14 +19,13 @@ const filters: {id:Filter;label:string}[]=[
 
 function LessonDetail({module,onClose}:{module:Module;onClose:()=>void}) {
   const {progress}=useStore();
-  const [slidePage,setSlidePage]=useState(1);
-  const [activeTab,setActiveTab]=useState<"pdf" | "powerpoint" | "quiz">("pdf");
+  const [activeTab,setActiveTab]=useState<"pdf" | "quiz">("pdf");
   const [links,setLinks]=useState<Record<string,string>>({});
   const [assetError,setAssetError]=useState("");
   const finished=progress.some(p=>p.module_id===module.id&&p.quiz_score>=70);
   const assets=module.assets??[];
   const assetFor=(kind:LessonAsset["asset_kind"])=>assets.find(a=>a.asset_kind===kind);
-  const pdf=assetFor("pdf"),ppt=assetFor("pptx"),video=assetFor("avatar_video");
+  const pdf=assetFor("pdf"),video=assetFor("avatar_video");
   const videoUrl=video?.external_url??(video?links[video.id]:undefined);
 
   useEffect(()=>{
@@ -46,11 +45,8 @@ function LessonDetail({module,onClose}:{module:Module;onClose:()=>void}) {
   },[module.id,assets]);
 
   const href=(asset?:LessonAsset)=>asset ? (asset.external_url??links[asset.id]) : undefined;
-  // Browsers cannot display native PPTX reliably. The converted PDF preserves the
-  // presentation layout and provides in-platform slide navigation.
+  // The lesson PDF is the single in-platform presentation viewer.
   const pdfUrl=href(pdf);
-  const pptViewUrl=pdfUrl ? `${pdfUrl}#page=${slidePage}&toolbar=0&navpanes=0&view=FitH` : undefined;
-  const slideCount=module.slides?.length??0;
   const quizAvailable=module.quiz.length>0;
 
   return <div className="fixed inset-0 z-50 flex items-end justify-center bg-navy-950/60 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label={module.title} onClick={onClose}>
@@ -73,27 +69,14 @@ function LessonDetail({module,onClose}:{module:Module;onClose:()=>void}) {
 
       <section className="space-y-4">
         <h3 className="font-bold">Materiais e avaliação</h3>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3" role="tablist" aria-label="Tipo de material">
-          <button type="button" role="tab" aria-selected={activeTab==="pdf"} disabled={!pdf} className={activeTab==="pdf"?"btn-primary justify-center":"btn-secondary justify-center"} onClick={()=>setActiveTab("pdf")}><FileText size={17}/> Ver arquivo PDF</button>
-          <button type="button" role="tab" aria-selected={activeTab==="powerpoint"} disabled={!ppt||!pdf} className={activeTab==="powerpoint"?"btn-primary justify-center":"btn-secondary justify-center"} onClick={()=>{setActiveTab("powerpoint");setSlidePage(1);}}><Presentation size={17}/> Ver PowerPoint</button>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" role="tablist" aria-label="Tipo de material">
+          <button type="button" role="tab" aria-selected={activeTab==="pdf"} disabled={!pdf} className={activeTab==="pdf"?"btn-primary justify-center":"btn-secondary justify-center"} onClick={()=>setActiveTab("pdf")}><FileText size={17}/> Ver material da aula</button>
           <button type="button" role="tab" aria-selected={activeTab==="quiz"} disabled={!quizAvailable} className={activeTab==="quiz"?"btn-primary justify-center":"btn-secondary justify-center"} onClick={()=>setActiveTab("quiz")}><BookOpen size={17}/> Fazer quiz {quizAvailable?`(${module.quiz.length})`:""}</button>
         </div>
 
         {activeTab==="pdf"&&<div role="tabpanel" className="space-y-2">
           {pdfUrl ? <iframe title={`Material PDF: ${module.title}`} src={`${pdfUrl}#toolbar=0&navpanes=0`} className="h-[68vh] min-h-80 w-full rounded-xl border border-slate-200 bg-white" /> :
             <p className="rounded-xl bg-slate-50 p-5 text-sm text-slate-600">O arquivo PDF desta aula ainda não está disponível.</p>}
-        </div>}
-
-        {activeTab==="powerpoint"&&<div role="tabpanel" className="space-y-3">
-          <p className="text-xs text-slate-600">Visualização dos slides da apresentação original, convertidos para leitura no navegador.</p>
-          {pptViewUrl ? <>
-            <iframe key={slidePage} title={`Slide ${slidePage} de ${module.title}`} src={pptViewUrl} className="h-[65vh] min-h-80 w-full rounded-xl border border-slate-200 bg-white"/>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <button className="btn-secondary" disabled={slidePage===1} onClick={()=>setSlidePage(p=>Math.max(1,p-1))}><ChevronLeft size={16}/> Slide anterior</button>
-              <span className="text-xs text-slate-600">{slideCount ? `Slide ${slidePage} de ${slideCount}` : `Slide ${slidePage}`}</span>
-              <button className="btn-secondary" disabled={slideCount>0&&slidePage>=slideCount} onClick={()=>setSlidePage(p=>p+1)}>Próximo slide <ChevronRight size={16}/></button>
-            </div>
-          </> : <p className="rounded-xl bg-slate-50 p-5 text-sm text-slate-600">A apresentação ainda está sendo preparada para visualização.</p>}
         </div>}
 
         {activeTab==="quiz"&&<div role="tabpanel">
