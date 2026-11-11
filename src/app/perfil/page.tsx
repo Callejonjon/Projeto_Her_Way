@@ -16,6 +16,7 @@ import type { Area } from "@/lib/types";
 export default function Perfil() {
   const { profile, updateProfile, connectLinkedin, journey, progress, mentorRequests, appliedJobs, resetDemo } = useStore();
   const [editing, setEditing] = useState(false);
+  const [activeTab,setActiveTab] = useState<"perfil"|"avatar">("perfil");
   const [draft, setDraft] = useState({ bio: profile.bio, linkedin_url: profile.linkedin_url });
   const [cvMsg, setCvMsg] = useState<string | null>(null);
   const [photoMsg,setPhotoMsg]=useState<string | null>(null);
@@ -69,6 +70,11 @@ export default function Perfil() {
     <>
       <PageHeader eyebrow="Meu Perfil" title="Sua vitrine profissional" />
 
+      <div role="tablist" aria-label="Seções do Meu Perfil" className="mb-6 grid max-w-xl grid-cols-2 gap-3">
+        <button type="button" role="tab" id="tab-perfil" aria-controls="panel-perfil" aria-selected={activeTab==="perfil"} onClick={()=>setActiveTab("perfil")} className={activeTab==="perfil"?"btn-primary justify-center":"btn-secondary justify-center"}>Perfil</button>
+        <button type="button" role="tab" id="tab-avatar" aria-controls="panel-avatar" aria-selected={activeTab==="avatar"} onClick={()=>setActiveTab("avatar")} className={activeTab==="avatar"?"btn-primary justify-center":"btn-secondary justify-center"}>Meu Avatar</button>
+      </div>
+      <div id="panel-perfil" role="tabpanel" aria-labelledby="tab-perfil" hidden={activeTab!=="perfil"}>
       <div className="grid gap-6 lg:grid-cols-[1fr_1.3fr]">
         {/* Cartão de perfil */}
         <section className="card overflow-hidden">
@@ -171,7 +177,8 @@ export default function Perfil() {
         </div>
       </div>
 
-      <div className="mt-6"><AvatarEditor/></div>
+      </div>
+      {activeTab==="avatar"&&<div id="panel-avatar" role="tabpanel" aria-labelledby="tab-avatar"><AvatarEditor/></div>}
     </>
   );
 }
