@@ -56,18 +56,16 @@ export default function AvatarAssetAtelier(){
  const [activeScene,setActiveScene]=useState("");
  const [showOnlyApproved,setShowOnlyApproved]=useState(false);
  const [changes,setChanges]=useState<Partial<Visual>>({});
+ const [layerSelection,setLayerSelection]=useState<Record<string,string>>({});
  const selected=all.find(a=>a.id===selectedId);
  const stage=useMemo(()=>all.filter(a=>(!showOnlyApproved||a.active)&&a.kind!=="scene"),[all,showOnlyApproved]);
+ // Never auto-equip a random asset of every category: incompatible sprites look broken.
  const previewLayers=useMemo(()=>{
-  const chosenKinds=new Set<Kind>();
-  const layers:Visual[]=[];
-  for(const v of stage){
-   if(chosenKinds.has(v.kind))continue;
-   chosenKinds.add(v.kind);
-   layers.push(v.id===selectedId?{...v,...changes}:v);
-  }
-  return layers.sort((a,b)=>a.z_index-b.z_index);
- },[stage,selectedId,changes]);
+  return Object.values(layerSelection).map(id=>stage.find(v=>v.id===id))
+   .filter((x):x is Visual=>Boolean(x))
+   .map(v=>v.id===selectedId?{...v,...changes}:v)
+   .sort((a,b)=>a.z_index-b.z_index);
+ },[stage,layerSelection,selectedId,changes]);
  const fetchAll=useCallback(async()=>{
   if(!supabase)return;
   const {data,error}=await supabase.from("avatar_visual_assets").select("*").order("kind").order("id").limit(300);
@@ -77,6 +75,8 @@ export default function AvatarAssetAtelier(){
  useEffect(()=>{void fetchAll()},[fetchAll]);
  useEffect(()=>{
   if(!selectedId&&all.length)setSelectedId(all.find(a=>a.kind==="base")?.id||all[0].id);
+  if(!layerSelection.base&&all.some(a=>a.kind==="base"))
+   setLayerSelection(v=>({...v,base:all.find(a=>a.kind==="base")!.id}));
   if(!activeScene&&all.some(a=>a.kind==="scene"))
    setActiveScene(all.find(a=>a.kind==="scene")?.id??"");
  },[all,selectedId,activeScene]);
@@ -158,17 +158,16 @@ export default function AvatarAssetAtelier(){
   <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
    <div>
     <div className="relative mx-auto aspect-[6/5] w-full max-w-[600px] overflow-hidden rounded-2xl border border-slate-200 bg-[#f7e2dc]">
-     <div className="absolute left-0 top-0 origin-top-left" style={{width:SCENE_W,height:SCENE_H,transform:"scale(var(--sprite-scale))"}}
-       ref={el=>{if(!el)return;const width=el.parentElement?.getBoundingClientRect().width??SCENE_W;el.style.setProperty("--sprite-scale",String(width/SCENE_W));}}>
+     <div className="absolute inset-0">
       {currentScene&&<img src={imageUrl(currentScene.storage_path)} alt="" draggable={false}
-       className="absolute" style={{left:0,top:0,width:SCENE_W,height:SCENE_H,objectFit:"cover",imageRendering:"pixelated"}}/>}
+       className="absolute" style={{left:0,top:0,width:"100%",height:"100%",objectFit:"cover",imageRendering:"pixelated"}}/>}
       {previewLayers.map(item=><img key={item.id} src={imageUrl(item.storage_path)} alt="" draggable={false}
-       className="absolute" style={{left:item.pos_x,top:item.pos_y,width:item.width_px,height:item.height_px,
-        objectFit:"fill",zIndex:item.z_index,imageRendering:"pixelated"}}/>)}
+       className="absolute" style={{left:(item.pos_x/SCENE_W*100)+"%",top:(item.pos_y/SCENE_H*100)+"%",width:(item.width_px/SCENE_W*100)+"%",height:(item.height_px/SCENE_H*100)+"%",
+        objectFit:"contain",zIndex:item.z_index,imageRendering:"pixelated"}}/>)}
      </div>
      {!currentScene&&<p className="absolute inset-0 grid place-items-center text-center text-sm text-slate-600">Importe o pacote para visualizar o cenário</p>}
     </div>
-    <p className="mt-2 text-center text-xs text-slate-500">Área de composição 600 × 500. Ajuste os deslocamentos sem interferir na página Meu Perfil das alunas.</p>
+    <p className="mt-2 text-center text-xs text-slate-500">Apenas as peças escolhidas aparecem na composição. Dimensões de referência: 600 × 500, com escala adaptável à tela.</p>
     <label className="label mt-4" htmlFor="scene-asset">Cenário de teste</label>
     <select id="scene-asset" className="input" value={activeScene} onChange={e=>setActiveScene(e.target.value)}>
      {scenes.length===0?<option value="">Nenhum cenário importado</option>:scenes.map(a=><option key={a.id} value={a.id}>{a.label}</option>)}
@@ -179,6 +178,17 @@ export default function AvatarAssetAtelier(){
     <select id="selected-asset" className="input" value={selectedId} onChange={e=>{setSelectedId(e.target.value);setChanges({});}}>
      {all.length===0?<option value="">Nenhum arquivo importado</option>:all.map(a=><option key={a.id} value={a.id}>{a.label} · {a.kind}{a.active?" ✓":""}</option>)}
     </select>
+    <p className="text-xs font-semibold text-slate-700">Peças presentes na montagem de teste</p>
+    <div className="grid grid-cols-2 gap-2">
+     {(["base","hair","outfit","shoes","accessory","pet","drink","device"] as Kind[]).map(kind=><div key={kind}>
+      <label className="label text-xs" htmlFor={"preview-"+kind}>{kind}</label>
+      <select id={"preview-"+kind} className="input text-xs" value={layerSelection[kind]??""}
+       onChange={e=>setLayerSelection(v=>({...v,[kind]:e.target.value}))}>
+       <option value="">Não mostrar</option>
+       {stage.filter(a=>a.kind===kind).map(a=><option key={a.id} value={a.id}>{a.label}</option>)}
+      </select>
+     </div>)}
+    </div>
     {v&&<>
      <p className="flex items-center gap-2 text-xs text-slate-500"><Layers size={14}/>{v.kind} · {v.storage_path}</p>
      <div className="grid grid-cols-2 gap-3">
