@@ -28,11 +28,11 @@ export default function MentorApplicationForm(){
   let alive=true;
   const client=supabase;
   void client.from("mentor_applications").select("id,status,created_at").eq("applicant_id",authUser.id)
-   .in("status",["pending","approved"]).order("created_at",{ascending:false}).limit(1).maybeSingle()
+   .in("status",["pending","approved"]).order("created_at",{ascending:false}).limit(20)
    .then(({data,error:err})=>{
     if(!alive)return;
     if(err)setError("Não foi possível verificar sua candidatura: "+err.message);
-    else setCurrent(data as Pending|null);
+    else { const applications=(data??[]) as Pending[]; setCurrent(applications.find(a=>a.status==="approved")??applications[0]??null); }
     setLoading(false);
    });
   return()=>{alive=false};
