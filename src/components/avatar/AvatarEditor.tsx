@@ -34,7 +34,7 @@ export default function AvatarEditor(){
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
  const [error,setError]=useState(""),[notice,setNotice]=useState("");
  const scenes=assets.filter(a=>a.kind==="scene");
- const activeScene=scenes.find(a=>a.id===scene);
+ const activeScene=scenes.find(a=>a.id===scene)??scenes.find(a=>a.id==="scene_cozy_bedroom")??scenes[0];
  const hasBase=assets.some(a=>a.kind==="base");
  const ready=hasBase&&scenes.length>0;
  const inventoryCount=inventory.size;
@@ -46,6 +46,10 @@ export default function AvatarEditor(){
  const stage=useMemo(()=>{
   const layers:Asset[]=[];
   const body=assets.find(a=>a.kind==="base");if(body)layers.push(body);
+  // Calças pertencem à composição-base das blusas; vestidos completos não precisam delas.
+  if(look.outfit_id!=="outfit_premium"){
+   const jeans=assets.find(a=>a.id==="jeans_blue");if(jeans)layers.push(jeans);
+  }
   for(const cat of ["hair","outfit","shoes","accessory","pet","drink","device"] as const){
    const id=look[f(cat)];if(id.endsWith("_none"))continue;
    const matches=categories.get(id)??[];
@@ -68,9 +72,16 @@ export default function AvatarEditor(){
   const failure=cat.error||own.error||config.error||media.error||chosen.error;
   if(failure){setError(failure.message);setLoading(false);return;}
   const next={...DEFAULT,...(config.data??{})} as AvatarLook;
+  const approved=(media.data??[]) as Asset[];
+  const validHair=approved.some(a=>a.item_id===next.hair_id&&a.kind==="hair");
+  const validOutfit=approved.some(a=>a.item_id===next.outfit_id&&a.kind==="outfit");
+  if(!validHair)next.hair_id="hair_black_long";
+  if(!validOutfit)next.outfit_id="outfit_casual";
   setCatalog((cat.data??[]) as Catalog[]);setInventory(new Set((own.data??[]).map(v=>v.item_id)));
-  setLook(next);setSaved(next);setAssets((media.data??[]) as Asset[]);
-  setScene(chosen.data?.asset_id??"");setSavedScene(chosen.data?.asset_id??"");
+  setLook(next);setSaved({...DEFAULT,...(config.data??{})} as AvatarLook);setAssets(approved);
+  const availableScene=approved.find(a=>a.id===chosen.data?.asset_id&&a.kind==="scene");
+  const defaultScene=approved.find(a=>a.id==="scene_cozy_bedroom")??approved.find(a=>a.kind==="scene");
+  setScene(availableScene?.id??defaultScene?.id??"");setSavedScene(chosen.data?.asset_id??"");
   setLoading(false);
  },[authUser]);
  useEffect(()=>{void load()},[load]);
@@ -99,15 +110,14 @@ export default function AvatarEditor(){
   setLook(next);
  }
  const dirty=JSON.stringify(saved)!==JSON.stringify(look)||scene!==savedScene;
- const options=tab==="scene"?scenes:catalog.filter(i=>i.category===tab&&
-   (categories.has(i.id)||inventory.has(i.id)));
+ const options=tab==="scene"?scenes:catalog.filter(i=>i.category===tab&&categories.has(i.id));
  const total=catalog.length;
  const progress=total?Math.round(inventoryCount/total*100):0;
  return <section className="space-y-5" aria-labelledby="avatar-title">
   <div className="rounded-3xl border border-pink-100 bg-gradient-to-br from-[#fff7fb] to-white p-5 sm:p-7">
    <div className="mb-5"><p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-pink-600"><Sparkles size={16}/> Her Way · Pixel Club</p>
     <h2 id="avatar-title" className="mt-1 text-2xl font-extrabold text-navy-950">Personalize seu Avatar</h2>
-    <p className="mt-1 text-sm text-slate-600">Peças reais de pixel art, cenários aconchegantes e conquistas desbloqueadas com seu progresso.</p>
+    <p className="mt-1 text-sm text-slate-600">Monte seu visual com as peças já conferidas. Outras opções serão adicionadas após revisão de encaixe.</p>
    </div>
    <div className="grid gap-5 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
     <div className="space-y-3">
@@ -131,7 +141,7 @@ export default function AvatarEditor(){
     </div>
     <div className="min-w-0 rounded-2xl border border-pink-100 bg-white p-4 sm:p-5">
      <div className="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="Personalização do avatar">
-       {tabs.map(t=><button key={t.id} type="button" role="tab" aria-selected={tab===t.id} onClick={()=>setTab(t.id)}
+       {tabs.filter(t=>t.id==="scene"||assets.some(a=>a.kind===t.id&&a.item_id)).map(t=><button key={t.id} type="button" role="tab" aria-selected={tab===t.id} onClick={()=>setTab(t.id)}
        className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-semibold transition ${tab===t.id?"border-pink-500 bg-pink-500 text-white":"border-slate-200 text-navy-950 hover:border-pink-200"}`}>
        <t.icon size={15}/>{t.name}</button>)}
      </div>
@@ -162,7 +172,7 @@ export default function AvatarEditor(){
       })}
      </div>}
      {ready&&options.length===0&&<p className="text-sm text-slate-500">Ainda não há itens aprovados nesta categoria.</p>}
-     {tab==="hair"&&<div className="mt-4"><p className="mb-2 text-xs font-semibold">Tom de pele</p><div className="flex gap-2">{skin.map(([id,color])=><button key={id} className="grid h-8 w-8 place-items-center rounded-full border-2 border-white ring-1 ring-slate-200" style={{background:color}} onClick={()=>setLook(v=>({...v,skin_tone:id}))} aria-label={"Tom "+id}>{look.skin_tone===id&&<Check className="text-white" size={17}/>}</button>)}</div></div>}
+     {tab==="hair"&&<p className="mt-4 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">As variações de tom de pele voltarão quando todas as bases correspondentes estiverem alinhadas e disponíveis. A seleção já salva no perfil permanece preservada.</p>}
     </div>
    </div>
    {error&&<p role="alert" className="mt-4 rounded-lg bg-rose-50 p-3 text-sm text-rose-800">{error}</p>}
