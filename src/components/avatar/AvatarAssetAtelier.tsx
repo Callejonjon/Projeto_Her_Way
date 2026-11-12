@@ -10,7 +10,8 @@ type Visual={
  pos_x:number;pos_y:number;width_px:number;height_px:number;z_index:number;active:boolean;
 };
 type Manifest={
- images:Record<string,{category:string;path:string;size?:number[]}>;
+ pack_version:2;
+ images:Record<string,{category:string;path:string;size:[number,number]}>;
 };
 const BUCKET="avatar-assets";
 const SCENE_W=600,SCENE_H=500;
@@ -90,8 +91,8 @@ export default function AvatarAssetAtelier(){
    const manifestEntry=zip.file("manifest.json");
    if(!manifestEntry)throw new Error("ZIP sem manifest.json. Utilize o pacote preparado para a Her Way.");
    const manifest=JSON.parse(await manifestEntry.async("string")) as Manifest;
-   if(!manifest.images||Object.keys(manifest.images).length>120)
-    throw new Error("Manifesto inválido ou número de peças acima do limite de 120 por envio.");
+   if(manifest.pack_version!==2||Array.isArray(manifest.images)||!manifest.images||Object.keys(manifest.images).length>120)
+    throw new Error("Pacote antigo ou inválido. Apenas novos sprites padronizados v2 podem ser importados.");
    let success=0;
    for(const [id,item] of Object.entries(manifest.images)){
     const kind=kindMap[item.category];
@@ -101,7 +102,8 @@ export default function AvatarAssetAtelier(){
     const blob=await entry.async("blob");
     const ext=item.path.endsWith(".webp")?"webp":"png";
     if(blob.size>4*1024*1024)throw new Error("Arquivo acima de 4 MB: "+item.path);
-    const storagePath="v1/"+id+"."+ext;
+    if(kind!=="scene"&&(ext!=="png"||item.size?.[0]!==256||item.size?.[1]!==256))throw new Error("A peça "+id+" precisa ser PNG 256 x 256.");
+    const storagePath="v2/"+id+"."+ext;
     setProgress(`Importando ${success+1}/${Object.keys(manifest.images).length}: ${id}`);
     const binary=await entry.async("uint8array");
     const upload=await supabase.storage.from(BUCKET).upload(storagePath,binary,{
@@ -112,7 +114,7 @@ export default function AvatarAssetAtelier(){
     const record={
       id,kind,item_id:keyMap[id]??null,label:id.replace(/_/g," "),
       storage_path:storagePath,pos_x,pos_y,width_px,height_px,z_index,
-      active:false,updated_at:new Date().toISOString(),
+      active:false,pack_version:2,review_state:"draft",canvas_width:item.size[0],canvas_height:item.size[1],updated_at:new Date().toISOString(),
     };
     const save=await supabase.from("avatar_visual_assets").upsert(record,{onConflict:"id"});
     if(save.error)throw new Error(`Falha ao registrar ${id}: ${save.error.message}`);
@@ -127,9 +129,10 @@ export default function AvatarAssetAtelier(){
   if(!supabase||!selected||busy)return;
   setBusy(true);setError("");setMessage("");
   const modified={...selected,...changes,updated_at:new Date().toISOString()};
+  if(modified.active&&(modified.pack_version!==2||modified.review_state!=="approved")){setError("Aprovação bloqueada: apenas peças v2 revisadas podem ser publicadas.");setBusy(false);return;}
   const update=await supabase.from("avatar_visual_assets").update({
     pos_x:modified.pos_x,pos_y:modified.pos_y,width_px:modified.width_px,height_px:modified.height_px,
-    z_index:modified.z_index,active:modified.active,updated_at:modified.updated_at,
+    z_index:modified.z_index,active:modified.active,review_state:modified.review_state,updated_at:modified.updated_at,
   }).eq("id",selected.id);
   if(update.error)setError(update.error.message);
   else{setMessage("Posicionamento salvo. Peça "+(modified.active?"aprovada.":"mantida como rascunho."));setChanges({});await fetchAll();}
@@ -145,7 +148,7 @@ export default function AvatarAssetAtelier(){
   <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
    <div><p className="mb-1 flex items-center gap-1 text-xs font-bold uppercase text-pink-600"><ShieldCheck size={15}/> Ferramenta exclusiva da administração</p>
     <h2 id="avatar-assets-title" className="text-xl font-extrabold text-navy-950">Ateliê de assets reais</h2>
-    <p className="mt-2 text-sm text-slate-600">Importe as imagens aprovadas, ajuste o encaixe e deixe como rascunho até a composição estar perfeita.</p>
+    <p className="mt-2 text-sm text-slate-600">Os arquivos antigos estão preservados, mas não podem ser publicados. Use somente sprites v2 alinhados ao modelo mestre.</p>
    </div>
    <label className="btn-primary cursor-pointer">
     <Upload size={17}/>{uploading?"Importando...":"Importar pacote ZIP"}
@@ -198,7 +201,10 @@ export default function AvatarAssetAtelier(){
         onChange={e=>edit(k,Number(e.target.value))}/>
       </div>)}
      </div>
-     <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="accent-pink-500" checked={v.active} onChange={e=>edit("active",e.target.checked)}/> Peça revisada e aprovada</label>
+     <label className="label" htmlFor="quality-state">Estado de revisão</label>
+     <select id="quality-state" className="input" value={v.review_state??"draft"} disabled={v.pack_version!==2} onChange={e=>edit("review_state",e.target.value as Visual["review_state"])}><option value="draft">Rascunho</option><option value="geometry_checked">Geometria conferida</option><option value="approved">Aprovado após teste visual</option></select>
+     <p className="text-xs text-slate-500">Padrão: v{v.pack_version??1} · {v.canvas_width??"?"} × {v.canvas_height??"?"}</p>
+     <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="accent-pink-500" checked={v.active} disabled={v.pack_version!==2||v.review_state!=="approved"} onChange={e=>edit("active",e.target.checked)}/> Peça revisada e aprovada</label>
      <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-900">Publicar uma peça no catálogo não garante que ela encaixa nas demais. Revise o corpo, cabelo e roupa juntos antes de aprovar.</p>
      <button type="button" className="btn-primary w-full justify-center" onClick={()=>void saveSelected()} disabled={busy}><Save size={16}/> Salvar ajustes</button>
     </>}
