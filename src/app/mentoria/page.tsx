@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import MentorBookingCalendar from "@/components/MentorBookingCalendar";
+import MentorSelfService from "@/components/MentorSelfService";
 
 import MentorApplicationForm from "@/components/MentorApplicationForm";
 import MentorApplicationReview from "@/components/MentorApplicationReview";
@@ -94,6 +95,7 @@ export default function Mentoria() {
         </div>
       </section>
 
+      <MentorSelfService/>
       <div className="mt-10"><MentorApplicationForm/></div>
       {isAdmin && <MentorApplicationReview/>}
 
