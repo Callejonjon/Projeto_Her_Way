@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/herway-banner.png" alt="Her Way" width="100%" />
+  <img src="herway-banner.png" />
 </p>
 
 <p align="center">
