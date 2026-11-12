@@ -164,7 +164,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       supabase.from("mentorships").select("*").eq("active",true).then(({data,error}) => {
         if(error){console.warn("[mentorships]",error.message);return;}
         const blockedDemoNames=new Set(["Carla Menezes","Juliana Prado","Renata Okada","Fernanda Lima"]);
-        setRemoteMentors((data??[]).filter(m=>!blockedDemoNames.has(m.mentor_name)).map(m=>({
+        setRemoteMentors((data??[]).filter(m=>!blockedDemoNames.has(m.mentor_name)&&Boolean(m.photo_path)&&Boolean(m.photo_url)).map(m=>({
           id:m.id, mentor_name:m.mentor_name, mentor_role:m.mentor_role,
           specialty:m.specialty, bio:m.bio??"", match_tags:m.match_tags??[],
           tracks:["A","B"], goals:[], photo_url:m.photo_url??undefined, initials:m.mentor_name.split(/\s+/).slice(0,2).map((x:string)=>x[0]).join("").toUpperCase(),
