@@ -38,7 +38,7 @@ export default function Mentoria() {
       {!journey.stagesDone[2] && (
         <p className="mb-6 flex items-start gap-2 rounded-xl bg-solar-400/15 p-3 text-sm text-slate-700">
           <Sparkles size={16} className="mt-0.5 shrink-0 text-amber-600" />
-          Você já pode consultar as agendas das mentoras aprovadas. Para reservar, complete sua foto no perfil; os horários disponíveis são reais.
+          Você já pode consultar as agendas das mentoras aprovadas.
         </p>
       )}
 
