@@ -37,11 +37,13 @@ export default function MentorSelfService() {
     .eq("mentor_id",owned.id).gte("starts_at",new Date().toISOString()).order("starts_at").limit(150);
    if(s.error)setError("Não foi possível consultar sua agenda: "+s.error.message);
    else setSlots((s.data??[]) as Slot[]);
-   const bookingRows=await supabase.from("mentor_bookings").select("id,slot_id,status,meet_url,meet_status")
-     .in("slot_id",(s.data??[]).map(v=>v.id))
-     .eq("status","confirmed");
-   if(bookingRows.error)setError("Não foi possível consultar as reservas: "+bookingRows.error.message);
-   else setBookings((bookingRows.data??[]) as MentorBooking[]);
+   const slotIds=(s.data??[]).map(v=>v.id);
+   if(slotIds.length){
+    const bookingRows=await supabase.from("mentor_bookings").select("id,slot_id,status,meet_url,meet_status")
+     .in("slot_id",slotIds).eq("status","confirmed");
+    if(bookingRows.error)setError("Não foi possível consultar as reservas: "+bookingRows.error.message);
+    else setBookings((bookingRows.data??[]) as MentorBooking[]);
+   }else setBookings([]);
   }
   setLoading(false);
  },[authUser]);
