@@ -24,7 +24,11 @@ export default function MentorApplicationReview(){
   const {data,error:err}=await supabase.from("mentor_applications").select("id,applicant_id,full_name,professional_role,specialty,experience_years,motivation,linkedin_url,resume_path,photo_path,mentor_id,status,review_notes,created_at")
     .in("status",["pending","approved"]).order("created_at",{ascending:true}).limit(100);
   if(err)setError("Não foi possível consultar candidaturas: "+err.message);
-  else setList(((data??[]) as Application[]).filter(a=>a.status==="pending"||(a.status==="approved"&&!a.mentor_id)));
+  else {
+   const applications=(data??[]) as Application[];
+   const alreadyPublished=new Set(applications.filter(a=>a.status==="approved"&&a.mentor_id).map(a=>a.applicant_id));
+   setList(applications.filter(a=>!alreadyPublished.has(a.applicant_id)&&(a.status==="pending"||(a.status==="approved"&&!a.mentor_id))));
+  }
   setLoading(false);
  }
  useEffect(()=>{void load()},[isAdmin]);
