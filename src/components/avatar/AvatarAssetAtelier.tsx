@@ -8,6 +8,7 @@ type Kind="base"|"hair"|"outfit"|"shoes"|"accessory"|"pet"|"drink"|"device"|"sce
 type Visual={
  id:string;kind:Kind;item_id:string|null;label:string;storage_path:string;
  pos_x:number;pos_y:number;width_px:number;height_px:number;z_index:number;active:boolean;
+ pack_version:number;review_state:"draft"|"geometry_checked"|"approved";canvas_width:number|null;canvas_height:number|null;
 };
 type Manifest={
  pack_version:2;
