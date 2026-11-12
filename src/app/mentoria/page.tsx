@@ -2,7 +2,9 @@
 import { useMemo, useState } from "react";
 import MentorBookingCalendar from "@/components/MentorBookingCalendar";
 import MentorAdminRegister from "@/components/MentorAdminRegister";
-import { CalendarDays, CheckCircle2, ExternalLink, Info, MapPin, Sparkles } from "lucide-react";
+import MentorApplicationForm from "@/components/MentorApplicationForm";
+import MentorApplicationReview from "@/components/MentorApplicationReview";
+import { CalendarDays, CheckCircle2, ExternalLink, Info, MapPin, Sparkles, UserPlus } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { mentorAffinity } from "@/lib/engine";
 import { MatchBadge, PageHeader, ProgressBar } from "@/components/ui";
@@ -26,6 +28,12 @@ export default function Mentoria() {
     <>
       <PageHeader eyebrow="Etapa 3 · Mentoria e networking" title="Sua rede de apoio"
         subtitle="Pareamento por critérios objetivos de afinidade: área de interesse, competências, trilha e objetivo de carreira." />
+
+      <section className="card mb-6 flex flex-col gap-4 border border-pink-100 bg-gradient-to-r from-pink-50 to-white p-5 sm:flex-row sm:items-center sm:justify-between" aria-label="Inscrição de novas mentoras">
+        <div><h2 className="flex items-center gap-2 text-lg font-extrabold text-navy-950"><UserPlus className="text-pink-500" size={20}/> Compartilhe sua trajetória como mentora</h2>
+         <p className="mt-1 text-sm text-slate-600">Profissionais podem se candidatar. A Her Way avalia currículo e experiência antes de aprovar qualquer participação.</p></div>
+        <a href="#quero-ser-mentora" className="btn-primary shrink-0 justify-center"><UserPlus size={17}/> Quero ser mentora</a>
+      </section>
 
       {!journey.stagesDone[2] && (
         <p className="mb-6 flex items-start gap-2 rounded-xl bg-solar-400/15 p-3 text-sm text-slate-700">
@@ -86,6 +94,8 @@ export default function Mentoria() {
         </div>
       </section>
 
+      <div className="mt-10"><MentorApplicationForm/></div>
+      {isAdmin && <MentorApplicationReview/>}
       {isAdmin && <MentorAdminRegister/>}
 
       {calendarMentorId && mentors.find(m=>m.id===calendarMentorId) && <MentorBookingCalendar mentor={mentors.find(m=>m.id===calendarMentorId)!} onClose={()=>setCalendarMentorId(null)}/>}
