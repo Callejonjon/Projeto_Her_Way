@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import MentorBookingCalendar from "@/components/MentorBookingCalendar";
-import MentorAdminRegister from "@/components/MentorAdminRegister";
+
 import MentorApplicationForm from "@/components/MentorApplicationForm";
 import MentorApplicationReview from "@/components/MentorApplicationReview";
 import { CalendarDays, CheckCircle2, ExternalLink, Info, MapPin, Sparkles, UserPlus } from "lucide-react";
@@ -96,7 +96,7 @@ export default function Mentoria() {
 
       <div className="mt-10"><MentorApplicationForm/></div>
       {isAdmin && <MentorApplicationReview/>}
-      {isAdmin && <MentorAdminRegister/>}
+
 
       {calendarMentorId && mentors.find(m=>m.id===calendarMentorId) && <MentorBookingCalendar mentor={mentors.find(m=>m.id===calendarMentorId)!} onClose={()=>setCalendarMentorId(null)}/>}
 
