@@ -103,6 +103,10 @@ export default function AvatarAssetAtelier(){
     const ext=item.path.endsWith(".webp")?"webp":"png";
     if(blob.size>4*1024*1024)throw new Error("Arquivo acima de 4 MB: "+item.path);
     if(kind!=="scene"&&(ext!=="png"||item.size?.[0]!==256||item.size?.[1]!==256))throw new Error("A peça "+id+" precisa ser PNG 256 x 256.");
+    const bitmap=await createImageBitmap(blob);
+    const matches=item.size?.[0]===bitmap.width&&item.size?.[1]===bitmap.height;
+    bitmap.close();
+    if(!matches)throw new Error("Tamanho real diferente do manifesto: "+id);
     const storagePath="v2/"+id+"."+ext;
     setProgress(`Importando ${success+1}/${Object.keys(manifest.images).length}: ${id}`);
     const binary=await entry.async("uint8array");
