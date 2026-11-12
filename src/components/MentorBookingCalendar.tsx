@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarDays, Clock, X, CheckCircle2, AlertCircle, Trash2, Camera } from "lucide-react";
+import { CalendarDays, Clock, X, CheckCircle2, AlertCircle, Camera } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { useStore } from "@/lib/store";
@@ -30,7 +30,7 @@ function futureDays(n=21):{key:string;day:string;dayOfMonth:string}[]{
 }
 
 export default function MentorBookingCalendar({mentor,onClose}:{mentor:Mentor;onClose:()=>void}){
- const {authUser,isAdmin,profile}=useStore();
+ const {authUser,profile}=useStore();
  const [slots,setSlots]=useState<Slot[]>([]);
  const [bookings,setBookings]=useState<Booking[]>([]);
  const [selectedDay,setSelectedDay]=useState("");
@@ -39,16 +39,12 @@ export default function MentorBookingCalendar({mentor,onClose}:{mentor:Mentor;on
  const [loading,setLoading]=useState(true);
  const [error,setError]=useState("");
  const [success,setSuccess]=useState("");
- const [adminDate,setAdminDate]=useState("");
- const [adminTime,setAdminTime]=useState("14:00");
- const [adminSlots,setAdminSlots]=useState<Slot[]>([]);
  const days=useMemo(()=>futureDays(),[]);
  const today=selectedDay||days[0].key;
  const ownActive=bookings.find(b=>b.status==="confirmed"&&new Date(b.mentor_slots?.ends_at??0).getTime()>Date.now());
  const photoReady=Boolean(profile.profile_photo_path);
  const ownThisMentor=ownActive?.mentor_slots?.mentor_id===mentor.id;
  const dateSlots=slots.filter(s=>dayKey(s.starts_at)===today);
- const groupSlots=adminSlots.filter(s=>dayKey(s.starts_at)===today);
  const reload=useCallback(async()=>{
   if(!supabase||!authUser)return;
   const [s,b]=await Promise.all([
@@ -59,13 +55,8 @@ export default function MentorBookingCalendar({mentor,onClose}:{mentor:Mentor;on
   else setSlots((s.data??[]) as Slot[]);
   if(b.error)setError("Não foi possível consultar suas reservas: "+b.error.message);
   else setBookings((b.data??[]) as unknown as Booking[]);
-  if(isAdmin){
-   const a=await supabase.from("mentor_slots").select("id,mentor_id,starts_at,ends_at")
-    .eq("mentor_id",mentor.id).gte("starts_at",new Date().toISOString()).order("starts_at").limit(150);
-   if(!a.error)setAdminSlots((a.data??[]) as Slot[]);
-  }
   setLoading(false);
- },[mentor.id,authUser,isAdmin]);
+ },[mentor.id,authUser]);
  useEffect(()=>{void reload();const timer=setInterval(()=>void reload(),30000);return()=>clearInterval(timer)},[reload]);
  async function book(){
   if(!supabase||!selectedSlot||busy)return;
@@ -82,22 +73,6 @@ export default function MentorBookingCalendar({mentor,onClose}:{mentor:Mentor;on
   setBusy(true);setError("");setSuccess("");
   const r=await supabase.rpc("mentor_cancel_session",{p_booking:ownActive.id});
   if(r.error)setError(r.error.message);else setSuccess("Reserva cancelada com sucesso.");
-  await reload();setBusy(false);
- }
- async function createSlot(){
-  if(!supabase||!adminDate||busy)return;
-  setBusy(true);setError("");setSuccess("");
-  const local=adminDate+"T"+adminTime+":00";
-  const r=await supabase.rpc("mentor_create_slot",{p_mentor:mentor.id,p_brasilia:local});
-  if(r.error)setError(r.error.message);else setSuccess("Horário publicado. As alunas já poderão reservá-lo.");
-  await reload();setBusy(false);
- }
- async function removeSlot(id:string){
-  if(!supabase||busy)return;
-  if(!window.confirm("Excluir este horário ainda não reservado?"))return;
-  setBusy(true);setError("");setSuccess("");
-  const r=await supabase.rpc("mentor_remove_slot",{p_slot:id});
-  if(r.error)setError(r.error.message);else setSuccess("Horário removido.");
   await reload();setBusy(false);
  }
 
@@ -140,21 +115,7 @@ export default function MentorBookingCalendar({mentor,onClose}:{mentor:Mentor;on
     <CalendarDays size={17}/>{busy?"Confirmando...":"Confirmar horário escolhido"}
    </button>}
    {ownActive&&!ownThisMentor&&<p className="mt-3 text-xs text-slate-500">Para reservar com esta mentora, cancele primeiro sua outra reserva ativa.</p>}
-   {isAdmin&&<section className="mt-7 space-y-3 border-t border-slate-200 pt-5">
-    <h3 className="font-bold">Administração: disponibilizar horários</h3>
-    <p className="text-xs text-slate-600">Publique somente horários previamente confirmados com a mentora. As sessões têm 30 minutos.</p>
-    <div className="grid grid-cols-2 gap-3">
-     <div><label className="label" htmlFor="mentor-slot-date">Data (Brasília)</label><input id="mentor-slot-date" type="date" className="input" value={adminDate} min={days[0].key} onChange={e=>setAdminDate(e.target.value)}/></div>
-     <div><label className="label" htmlFor="mentor-slot-time">Horário</label><select id="mentor-slot-time" className="input" value={adminTime} onChange={e=>setAdminTime(e.target.value)}>
-      {Array.from({length:24},(_,i)=>{const h=String(Math.floor(i/2)+8).padStart(2,"0"),m=i%2?"30":"00",v=h+":"+m;return <option key={v} value={v}>{v}</option>})}
-     </select></div>
-    </div>
-    <button className="btn-secondary" disabled={!adminDate||busy} onClick={()=>void createSlot()}><CalendarDays size={16}/> Publicar horário na agenda</button>
-    {groupSlots.length>0&&<div className="space-y-2 rounded-xl bg-slate-50 p-3">
-     <p className="text-xs font-bold">Horários cadastrados neste dia</p>
-     {groupSlots.map(slot=><div key={slot.id} className="flex items-center justify-between gap-2 text-sm"><span>{hm.format(new Date(slot.starts_at))}</span><button className="inline-flex items-center gap-1 text-xs text-rose-700 hover:underline" onClick={()=>void removeSlot(slot.id)}><Trash2 size={13}/> Remover se livre</button></div>)}
-    </div>}
-   </section>}
+
   </div>
  </div>;
 }
