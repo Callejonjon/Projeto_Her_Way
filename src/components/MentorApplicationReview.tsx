@@ -104,7 +104,7 @@ export default function MentorApplicationReview(){
    <h2 id="mentor-review-title" className="flex items-center gap-2 text-lg font-bold"><ClipboardCheck size={20} className="text-pink-500"/> Administração · Candidaturas de mentoras</h2>
    <button type="button" className="btn-secondary" onClick={()=>void load()} disabled={loading}><RefreshCw size={15}/> Atualizar</button>
   </div>
-  <p className="mb-4 text-sm text-slate-600">Os currículos são privados. <strong>Ao aprovar, o perfil da mentora é criado e ativado automaticamente</strong> com os dados da candidatura. A agenda é configurada separadamente conforme os horários combinados. Candidaturas aprovadas antes desta atualização aparecem aqui para publicação com uma foto, sem novo cadastro.</p>
+  <p className="mb-4 text-sm text-slate-600">Os currículos são privados. <strong>Ao aprovar, o perfil da mentora é criado e ativado automaticamente</strong> com os dados da candidatura. A própria mentora configura sua agenda na seção Minha área de mentora. A foto profissional é obrigatória para aparecer no catálogo e disponibilizar horários. Candidaturas aprovadas antes desta atualização aparecem aqui para publicação com uma foto, sem novo cadastro.</p>
   {loading?<p className="text-sm text-slate-500">Consultando candidaturas...</p>:
    list.length===0?<p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">Nenhuma solicitação pendente.</p>:
    <div className="space-y-4">{list.map(item=><article key={item.id} className="rounded-xl border border-slate-200 p-4">
