@@ -28,7 +28,7 @@ export default function MentorApplicationForm(){
   let alive=true;
   const client=supabase;
   void client.from("mentor_applications").select("id,status,created_at").eq("applicant_id",authUser.id)
-   .eq("status","pending").order("created_at",{ascending:false}).limit(1).maybeSingle()
+   .in("status",["pending","approved"]).order("created_at",{ascending:false}).limit(1).maybeSingle()
    .then(({data,error:err})=>{
     if(!alive)return;
     if(err)setError("Não foi possível verificar sua candidatura: "+err.message);
@@ -85,8 +85,8 @@ export default function MentorApplicationForm(){
   <p className="mb-5 text-sm text-slate-600">Compartilhe sua experiência com outras mulheres do mercado financeiro. Toda candidatura é avaliada pela equipe da Her Way antes da publicação de qualquer perfil.</p>
   {loading?<p className="text-sm text-slate-500">Verificando sua candidatura...</p>:current?
    <div role="status" className="rounded-xl border border-pink-200 bg-pink-50 p-5">
-    <p className="flex items-center gap-2 font-bold text-navy-950"><CheckCircle2 size={18} className="text-pink-600"/>{sent?"Candidatura enviada!":"Sua candidatura está em análise"}</p>
-    <p className="mt-2 text-sm text-slate-700">Recebemos sua solicitação. Ela está pendente de avaliação pela administração. Enviar o formulário não cria automaticamente um perfil público de mentora.</p>
+    <p className="flex items-center gap-2 font-bold text-navy-950"><CheckCircle2 size={18} className="text-pink-600"/>{current.status==="approved"?"Você já é mentora aprovada!":sent?"Candidatura enviada!":"Sua candidatura está em análise"}</p>
+    <p className="mt-2 text-sm text-slate-700">{current.status==="approved"?"Configure sua foto profissional e sua disponibilidade em Minha área de mentora, nesta página.":"Recebemos sua solicitação. Ela está pendente de avaliação pela administração. Enviar o formulário não cria automaticamente um perfil público de mentora."}</p>
    </div>:
   <form onSubmit={e=>void submit(e)} className="grid gap-4 sm:grid-cols-2">
    <div><label htmlFor="mentor-apply-name" className="label">Nome completo *</label><input id="mentor-apply-name" className="input" required minLength={5} maxLength={120} autoComplete="name" value={fullName} onChange={e=>setFullName(e.target.value)}/></div>
