@@ -7,7 +7,7 @@ import {useStore} from "@/lib/store";
 type Application={
  id:string;applicant_id:string;full_name:string;professional_role:string;specialty:string;
  experience_years:number;motivation:string;linkedin_url:string|null;
- resume_path:string;status:string;review_notes:string|null;created_at:string;
+ resume_path:string;photo_path:string|null;status:string;review_notes:string|null;created_at:string;
 };
 export default function MentorApplicationReview(){
  const {isAdmin}=useStore();
@@ -21,7 +21,7 @@ export default function MentorApplicationReview(){
  async function load(){
   if(!supabase||!isAdmin)return;
   setLoading(true);setError("");
-  const {data,error:err}=await supabase.from("mentor_applications").select("id,applicant_id,full_name,professional_role,specialty,experience_years,motivation,linkedin_url,resume_path,status,review_notes,created_at")
+  const {data,error:err}=await supabase.from("mentor_applications").select("id,applicant_id,full_name,professional_role,specialty,experience_years,motivation,linkedin_url,resume_path,photo_path,status,review_notes,created_at")
     .eq("status","pending").order("created_at",{ascending:true}).limit(100);
   if(err)setError("Não foi possível consultar candidaturas: "+err.message);
   else setList((data??[]) as Application[]);
@@ -64,6 +64,7 @@ export default function MentorApplicationReview(){
       :"Candidatura recusada.");
    setPhotos(p=>({...p,[item.id]:null}));
    await load();
+   if(status==="approved")window.location.reload();
   }catch(e){setError(e instanceof Error?e.message:"Não foi possível avaliar a candidatura.");}
   finally{setBusy(null);}
  
@@ -79,7 +80,11 @@ export default function MentorApplicationReview(){
    list.length===0?<p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">Nenhuma solicitação pendente.</p>:
    <div className="space-y-4">{list.map(item=><article key={item.id} className="rounded-xl border border-slate-200 p-4">
     <div className="flex flex-wrap items-start justify-between gap-2">
-     <div><h3 className="font-bold">{item.full_name}</h3><p className="text-xs text-slate-600">{item.professional_role} · {item.specialty} · {item.experience_years} ano(s)</p></div>
+     <div className="flex items-center gap-3">
+      {item.photo_path&&<img src={supabase?.storage.from("profile-photos").getPublicUrl(item.photo_path).data.publicUrl??""}
+        alt={"Foto profissional de "+item.full_name} className="h-16 w-16 shrink-0 rounded-xl border border-pink-100 object-cover"/>}
+      <div><h3 className="font-bold">{item.full_name}</h3><p className="text-xs text-slate-600">{item.professional_role} · {item.specialty} · {item.experience_years} ano(s)</p></div>
+     </div>
      <span className="rounded-full bg-amber-50 px-2 py-1 text-xs text-amber-800">Pendente</span>
     </div>
     <p className="mt-3 whitespace-pre-wrap text-sm text-slate-700">{item.motivation}</p>
@@ -87,7 +92,7 @@ export default function MentorApplicationReview(){
      <button className="inline-flex items-center gap-1 font-semibold text-pink-600 underline" type="button" onClick={()=>void openCv(item)}><FileText size={14}/> Abrir currículo (PDF)</button>
      {item.linkedin_url&&<a href={item.linkedin_url} target="_blank" rel="noreferrer noopener" className="font-semibold text-pink-600 underline">Ver LinkedIn</a>}
     </div>
-    <label className="label mt-3" htmlFor={"mentor-review-photo-"+item.id}>Foto profissional adicional (opcional para novas candidaturas; necessária se a antiga não tiver foto)</label>
+    <label className="label mt-3" htmlFor={"mentor-review-photo-"+item.id}>Foto profissional adicional (necessária apenas se a candidatura antiga não tiver foto)</label>
     <input id={"mentor-review-photo-"+item.id} type="file" accept="image/jpeg,image/png,image/webp" className="input" onChange={e=>setPhotos(p=>({...p,[item.id]:e.target.files?.[0]??null}))}/>
     <label className="label mt-3" htmlFor={"mentor-review-"+item.id}>Observação administrativa (opcional)</label>
     <textarea id={"mentor-review-"+item.id} className="input min-h-16" maxLength={1000} value={notes[item.id]??""} onChange={e=>setNotes(n=>({...n,[item.id]:e.target.value}))}/>
