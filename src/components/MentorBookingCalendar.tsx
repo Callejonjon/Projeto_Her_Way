@@ -8,7 +8,7 @@ import { useStore } from "@/lib/store";
 import type { Mentor } from "@/lib/types";
 
 type Slot={id:string;mentor_id:string;starts_at:string;ends_at:string};
-type Booking={id:string;slot_id:string;status:string;created_at:string;mentor_slots:Slot&{mentorships:{mentor_name:string}|null}};
+type Booking={id:string;slot_id:string;status:string;created_at:string;meet_url:string|null;meet_status:string;mentor_slots:Slot&{mentorships:{mentor_name:string}|null}};
 const zone="America/Sao_Paulo";
 const datefmt=new Intl.DateTimeFormat("en-CA",{timeZone:zone,year:"numeric",month:"2-digit",day:"2-digit"});
 const hm=new Intl.DateTimeFormat("pt-BR",{timeZone:zone,hour:"2-digit",minute:"2-digit",hour12:false});
@@ -49,7 +49,7 @@ export default function MentorBookingCalendar({mentor,onClose}:{mentor:Mentor;on
   if(!supabase||!authUser)return;
   const [s,b]=await Promise.all([
    supabase.rpc("mentor_available_slots",{p_mentor:mentor.id}),
-   supabase.from("mentor_bookings").select("id,slot_id,status,created_at,mentor_slots(id,mentor_id,starts_at,ends_at,mentorships(mentor_name))").eq("student_id",authUser.id).eq("status","confirmed"),
+   supabase.from("mentor_bookings").select("id,slot_id,status,created_at,meet_url,meet_status,mentor_slots(id,mentor_id,starts_at,ends_at,mentorships(mentor_name))").eq("student_id",authUser.id).eq("status","confirmed"),
   ]);
   if(s.error)setError("Não foi possível carregar os horários: "+s.error.message);
   else setSlots((s.data??[]) as Slot[]);
@@ -58,13 +58,43 @@ export default function MentorBookingCalendar({mentor,onClose}:{mentor:Mentor;on
   setLoading(false);
  },[mentor.id,authUser]);
  useEffect(()=>{void reload();const timer=setInterval(()=>void reload(),30000);return()=>clearInterval(timer)},[reload]);
+ async function syncGoogle(bookingId:string, method:"POST"|"DELETE"="POST"){
+  if(!supabase)throw new Error("Supabase indisponível");
+  const {data:{session}}=await supabase.auth.getSession();
+  if(!session?.access_token)throw new Error("Sua sessão expirou. Entre novamente.");
+  const result=await fetch("/api/mentoria/meet",{
+   method,headers:{"Content-Type":"application/json",Authorization:"Bearer "+session.access_token},
+   body:JSON.stringify({bookingId})
+  });
+  const data=await result.json() as {error?:string;status?:string;meetUrl?:string|null};
+  if(!result.ok)throw new Error(data.error||"Erro ao gerar Google Meet");
+  return data;
+ }
+ async function retryGoogle(){
+  if(!ownActive||busy)return;
+  setBusy(true);setError("");setSuccess("");
+  try{
+   const data=await syncGoogle(ownActive.id);
+   setSuccess(data.status==="ready"?"Link Google Meet pronto!":"Reunião em preparação. Atualize em instantes.");
+  }catch(e){setError(e instanceof Error?e.message:"Não foi possível preparar o Meet.");}
+  await reload();setBusy(false);
+ }
  async function book(){
   if(!supabase||!selectedSlot||busy)return;
   if(!photoReady){setError("Adicione uma foto no Meu Perfil antes de confirmar a mentoria.");return;}
   setBusy(true);setError("");setSuccess("");
   const r=await supabase.rpc("mentor_book_session",{p_slot:selectedSlot});
   if(r.error)setError(r.error.message);
-  else{setSuccess("Mentoria confirmada! Sua reserva foi registrada na Her Way.");setSelectedSlot(null);}
+  else{
+   setSelectedSlot(null);
+   setSuccess("Mentoria reservada. Preparando link Google Meet...");
+   try{
+    const data=await syncGoogle(String(r.data));
+    setSuccess(data.status==="ready"?"Mentoria confirmada! Link Google Meet disponível abaixo.":"Reserva confirmada. O Google ainda está preparando a reunião.");
+   }catch(e){
+    setError("Reserva confirmada, mas o link do Meet ainda não está disponível. Use 'Gerar link do Meet' para tentar novamente.");
+   }
+  }
   await reload();setBusy(false);
  }
  async function cancel(){
@@ -72,7 +102,15 @@ export default function MentorBookingCalendar({mentor,onClose}:{mentor:Mentor;on
   if(!window.confirm("Deseja cancelar sua mentoria? O horário voltará a ficar disponível para outras alunas."))return;
   setBusy(true);setError("");setSuccess("");
   const r=await supabase.rpc("mentor_cancel_session",{p_booking:ownActive.id});
-  if(r.error)setError(r.error.message);else setSuccess("Reserva cancelada com sucesso.");
+  if(r.error)setError(r.error.message);
+  else{
+   try{
+    await syncGoogle(ownActive.id,"DELETE");
+    setSuccess("Reserva e evento do Google Calendar cancelados.");
+   }catch{
+    setError("Reserva cancelada na Her Way, mas não foi possível sincronizar o cancelamento no Google Calendar. Contate a equipe.");
+   }
+  }
   await reload();setBusy(false);
  }
 
@@ -90,7 +128,13 @@ export default function MentorBookingCalendar({mentor,onClose}:{mentor:Mentor;on
    {ownActive&&<section className="mb-5 rounded-xl border border-pink-200 bg-pink-50 p-4">
     <p className="font-bold text-navy-950">Sua mentoria está confirmada</p>
     <p className="mt-1 text-sm text-slate-700">{ownActive.mentor_slots?.mentorships?.mentor_name||"Mentora Her Way"} · {ownActive.mentor_slots?.starts_at?longDate.format(new Date(ownActive.mentor_slots.starts_at)):""} às {ownActive.mentor_slots?.starts_at?hm.format(new Date(ownActive.mentor_slots.starts_at)):""}</p>
-    <p className="mt-1 text-xs text-slate-600">A plataforma registra o horário; o link da chamada será combinado com a equipe de mentoria.</p>
+    {ownActive.meet_url?
+     <a href={ownActive.meet_url} target="_blank" rel="noopener noreferrer" className="btn-primary mt-3 inline-flex">Entrar no Google Meet</a>:
+     <div className="mt-3">
+      <p className="text-xs text-amber-700">Sua reserva está confirmada. O link do Google Meet ainda está sendo preparado.</p>
+      <button type="button" className="btn-secondary mt-2" disabled={busy} onClick={()=>void retryGoogle()}>Gerar link do Meet</button>
+     </div>}
+    <p className="mt-2 text-xs text-slate-600">A reunião é criada pela agenda oficial da Her Way.</p>
     <button className="btn-secondary mt-3" disabled={busy} onClick={()=>void cancel()}>Cancelar minha reserva</button>
    </section>}
    {!photoReady&&!ownActive&&<div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
