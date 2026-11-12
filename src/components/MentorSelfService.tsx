@@ -7,6 +7,7 @@ import { useStore } from "@/lib/store";
 
 type OwnedMentor = { id:string; mentor_name:string; photo_path:string|null; photo_url:string|null };
 type Slot = { id:string; starts_at:string; ends_at:string };
+type MentorBooking = {id:string;slot_id:string;status:string;meet_url:string|null;meet_status:string};
 const zone = "America/Sao_Paulo";
 const dateFormat = new Intl.DateTimeFormat("pt-BR",{timeZone:zone,day:"2-digit",month:"2-digit",year:"numeric"});
 const timeFormat = new Intl.DateTimeFormat("pt-BR",{timeZone:zone,hour:"2-digit",minute:"2-digit",hour12:false});
@@ -15,6 +16,7 @@ export default function MentorSelfService() {
  const {authUser} = useStore();
  const [mentor,setMentor] = useState<OwnedMentor|null>(null);
  const [slots,setSlots] = useState<Slot[]>([]);
+ const [bookings,setBookings] = useState<MentorBooking[]>([]);
  const [date,setDate] = useState("");
  const [time,setTime] = useState("14:00");
  const [photo,setPhoto] = useState<File|null>(null);
@@ -35,6 +37,11 @@ export default function MentorSelfService() {
     .eq("mentor_id",owned.id).gte("starts_at",new Date().toISOString()).order("starts_at").limit(150);
    if(s.error)setError("Não foi possível consultar sua agenda: "+s.error.message);
    else setSlots((s.data??[]) as Slot[]);
+   const bookingRows=await supabase.from("mentor_bookings").select("id,slot_id,status,meet_url,meet_status")
+     .in("slot_id",(s.data??[]).map(v=>v.id))
+     .eq("status","confirmed");
+   if(bookingRows.error)setError("Não foi possível consultar as reservas: "+bookingRows.error.message);
+   else setBookings((bookingRows.data??[]) as MentorBooking[]);
   }
   setLoading(false);
  },[authUser]);
@@ -107,7 +114,14 @@ export default function MentorSelfService() {
    <h4 className="mt-5 font-bold">Meus horários cadastrados</h4>
    {slots.length===0?<p className="mt-2 text-sm text-slate-500">Você ainda não cadastrou horários futuros.</p>:
     <div className="mt-2 space-y-2">{slots.map(s=><div key={s.id} className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 p-3 text-sm">
-     <span>{dateFormat.format(new Date(s.starts_at))} às {timeFormat.format(new Date(s.starts_at))}</span>
+     <div><span>{dateFormat.format(new Date(s.starts_at))} às {timeFormat.format(new Date(s.starts_at))}</span>
+      {bookings.find(b=>b.slot_id===s.id)?<div className="mt-1 text-xs">
+       <span className="font-semibold text-pink-700">Reservado · </span>
+       {bookings.find(b=>b.slot_id===s.id)?.meet_url?
+        <a href={bookings.find(b=>b.slot_id===s.id)?.meet_url??"#"} target="_blank" rel="noopener noreferrer" className="text-pink-700 underline">Entrar no Google Meet</a>:
+        <span className="text-amber-700">Link do Meet em preparação</span>}
+      </div>:null}
+     </div>
      <button type="button" className="inline-flex items-center gap-1 text-rose-700 hover:underline" disabled={busy} onClick={()=>void removeSlot(s.id)}><Trash2 size={15}/> Remover se livre</button>
     </div>)}</div>}
   </div>
